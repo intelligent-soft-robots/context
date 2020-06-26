@@ -26,6 +26,7 @@ T LowPassFilter<T>::get(T value)
 	    values_.pop_front();
 	}
     sum_+=value;
+    values_.push_back(value);
     return sum_/static_cast<T>(values_.size());
 }
 
