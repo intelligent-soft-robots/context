@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   shared_memory
 )
 
+# detecting if "normal" or realtime OS
 DEFINE_OS()
 
 catkin_package(
@@ -19,9 +20,17 @@ catkin_package(
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
+# creating library
 add_library(context
   src/velocity_compute.cpp
   src/ball.cpp
   src/low_pass_filter.cpp)
 target_link_libraries(context ${catkin_LIBRARIES})
 
+# python wrappers
+pybind11_add_module(context_py srcpy/wrappers.cpp)
+target_link_libraries(context_py PRIVATE context ${catkin_LIBRARIES})
+set_target_properties(context_py PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_PYTHON_DESTINATION}
+  OUTPUT_NAME context)
+install(TARGETS context_py DESTINATION ${CATKIN_GLOBAL_PYTHON_DESTINATION})

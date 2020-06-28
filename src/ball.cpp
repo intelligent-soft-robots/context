@@ -30,5 +30,10 @@ namespace context
 	    }
 	return state_;
     }
+
+    const State& Ball::get()
+    {
+	return state_;
+    }
     
 }
