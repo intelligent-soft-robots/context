@@ -21,6 +21,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(context
   src/velocity_compute.cpp
-  src/ball.cpp)
+  src/ball.cpp
+  src/low_pass_filter.cpp)
 target_link_libraries(context ${catkin_LIBRARIES})
 
