@@ -6,24 +6,20 @@
 
 namespace context
 {
+/*! Encapsulate the 3d position and the 3d
+ *  velocity of an object.
+ */
+class State
+{
+public:
+    State();
+    Coordinates position;
+    Coordinates velocity;
 
-    /*! Encapsulate the 3d position and the 3d 
-     *  velocity of an object.
-     */
-    class State
+    template <class Archive>
+    void serialize(Archive &archive)
     {
-    public:
-
-	State();
-	Coordinates position;
-	Coordinates velocity;
-
-	template <class Archive>
-	void serialize(Archive &archive)
-	{
-	    archive(position,velocity);
-	}
-	
-    };
-    
+        archive(position, velocity);
+    }
+};
 }
