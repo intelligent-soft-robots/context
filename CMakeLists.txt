@@ -34,3 +34,9 @@ set_target_properties(context_py PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_PYTHON_DESTINATION}
   OUTPUT_NAME context)
 install(TARGETS context_py DESTINATION ${CATKIN_GLOBAL_PYTHON_DESTINATION})
+
+# unit tests
+catkin_add_gtest(context_unit_tests
+  tests/main.cpp
+  tests/unit_tests.cpp)
+target_link_libraries(context_unit_tests context ${catkin_libraries})
