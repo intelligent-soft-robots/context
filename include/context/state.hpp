@@ -12,7 +12,7 @@ namespace context
 class State
 {
 public:
-    State();
+    State(){}
     Coordinates position;
     Coordinates velocity;
 
