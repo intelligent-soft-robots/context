@@ -25,6 +25,7 @@ double VelocityCompute::get(long diff_time, double position)
     }
     double dx =
         (position - previous_position_) / static_cast<double>(diff_time);
+    previous_position_ = position;
     return filter_.get(dx);
 }
 }
