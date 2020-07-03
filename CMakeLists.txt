@@ -41,3 +41,6 @@ catkin_add_gtest(context_unit_tests
   tests/main.cpp
   tests/unit_tests.cpp)
 target_link_libraries(context_unit_tests context ${catkin_libraries})
+
+# documentation 
+build_sphinx_documentation()
