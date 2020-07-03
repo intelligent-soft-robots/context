@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 find_package(catkin REQUIRED COMPONENTS
   pybind11_catkin
   shared_memory
+  mpi_cmake_modules
 )
 
 # detecting if "normal" or realtime OS
@@ -15,7 +16,7 @@ DEFINE_OS()
 catkin_package(
  LIBRARIES context
  INCLUDE_DIRS include
- CATKIN_DEPENDS pybind11_catkin shared_memory
+ CATKIN_DEPENDS pybind11_catkin shared_memory mpi_cmake_modules
 )
 
 include_directories(include ${catkin_INCLUDE_DIRS})
