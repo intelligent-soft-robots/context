@@ -28,4 +28,4 @@ double VelocityCompute::get(long diff_time, double position)
     previous_position_ = position;
     return filter_.get(dx);
 }
-}
+}  // namespace context

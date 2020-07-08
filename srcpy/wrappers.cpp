@@ -4,10 +4,10 @@
 #include "context/ball.hpp"
 #include "context/coordinates.hpp"
 #include "context/low_pass_filter.hpp"
-#include "context/state.hpp"
-#include "context/velocity_compute.hpp"
 #include "context/rotation.hpp"
+#include "context/state.hpp"
 #include "context/transform.hpp"
+#include "context/velocity_compute.hpp"
 
 using namespace context;
 
@@ -42,12 +42,11 @@ PYBIND11_MODULE(context, m)
         .def("update", &Ball::update)
         .def("get", &Ball::get);
 
-    pybind11::class_<Rotation>(m,"Rotation")
-      .def(pybind11::init<double,double,double>())
-      .def("rotate",&Rotation::rotate);
+    pybind11::class_<Rotation>(m, "Rotation")
+        .def(pybind11::init<double, double, double>())
+        .def("rotate", &Rotation::rotate);
 
-    pybind11::class_<Transform>(m,"Transform")
-      .def(pybind11::init<double,double,
-	   double,Coordinates>())
-      .def("apply",&Transform::apply);
+    pybind11::class_<Transform>(m, "Transform")
+        .def(pybind11::init<double, double, double, Coordinates>())
+        .def("apply", &Transform::apply);
 }

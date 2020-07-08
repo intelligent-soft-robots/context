@@ -33,4 +33,4 @@ double LowPassFilter::get(double value)
     values_.push_back(value);
     return sum_ / static_cast<double>(values_.size());
 }
-}
+}  // namespace context

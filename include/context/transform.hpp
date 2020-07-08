@@ -4,11 +4,10 @@
 
 namespace context
 {
-
-  /*! 3d homogeneous transformation */
-  class Transform
-  {
-  public:
+/*! 3d homogeneous transformation */
+class Transform
+{
+public:
     /**
      * Construct the transformation matrix
      * @param alpha: rotation around x
@@ -16,16 +15,15 @@ namespace context
      * @param gamma: rotation around z
      * @param translation: translation
      */
-    Transform(double alpha, double beta, double gamma,
-	      Coordinates translation);
+    Transform(double alpha, double beta, double gamma, Coordinates translation);
     /**
      * Apply the transformation to coordinates
      */
     void apply(Coordinates& coordinates);
-  private:
+
+private:
     Rotation rotation_;
     Coordinates translation_;
-  };
-  
-}
+};
 
+}  // namespace context
