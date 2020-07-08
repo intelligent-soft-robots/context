@@ -43,4 +43,4 @@ private:
     double previous_position_;
     bool initialized_;
 };
-}
+}  // namespace context

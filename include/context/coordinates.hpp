@@ -25,4 +25,4 @@ public:
         archive(coordinates, stamp);
     }
 };
-}
+}  // namespace context

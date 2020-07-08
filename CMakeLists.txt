@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   shared_memory
   mpi_cmake_modules
 )
+search_for_eigen()
 
 # detecting if "normal" or realtime OS
 DEFINE_OS()
@@ -19,13 +20,17 @@ catkin_package(
  CATKIN_DEPENDS pybind11_catkin shared_memory mpi_cmake_modules
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories( include
+                     ${catkin_INCLUDE_DIRS}
+                     ${Eigen_INCLUDE_DIRS} )
 
 # creating library
 add_library(context
   src/velocity_compute.cpp
   src/ball.cpp
-  src/low_pass_filter.cpp)
+  src/low_pass_filter.cpp
+  src/rotation.cpp
+  src/transform.cpp)
 target_link_libraries(context ${catkin_LIBRARIES})
 
 # python wrappers

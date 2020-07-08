@@ -55,4 +55,4 @@ private:
     bool initialized_;
     long previous_time_;
 };
-}
+}  // namespace context

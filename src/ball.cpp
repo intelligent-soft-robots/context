@@ -31,4 +31,4 @@ const State& Ball::get()
 {
     return state_;
 }
-}
+}  // namespace context

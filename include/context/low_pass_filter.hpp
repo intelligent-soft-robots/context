@@ -41,4 +41,4 @@ private:
     std::deque<double> values_;
     double sum_;
 };
-}
+}  // namespace context
