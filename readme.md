@@ -1,1 +1,1 @@
-Under construction
+Collections of generic serializable items aiming a ease the creation of context classes, i.e. observations of an experiment. Seralialization makes its possible to use these context classes along o80. 
