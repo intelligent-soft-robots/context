@@ -34,6 +34,7 @@ PYBIND11_MODULE(context, m)
 
     pybind11::class_<State>(m, "State")
         .def(pybind11::init<>())
+        .def(pybind11::init<const Coordinates&,const Coordinates&>())
         .def_readwrite("position", &State::position)
         .def_readwrite("velocity", &State::velocity);
 

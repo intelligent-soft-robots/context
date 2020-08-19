@@ -15,6 +15,10 @@ public:
     State()
     {
     }
+    State(const Coordinates& position_,
+	  const Coordinates& velocity_)
+      : position(position_),
+	velocity(velocity_){}
     Coordinates position;
     Coordinates velocity;
 

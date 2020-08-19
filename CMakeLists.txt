@@ -34,11 +34,15 @@ add_library(context
 target_link_libraries(context ${catkin_LIBRARIES})
 
 # python wrappers
+# note: the generated package is context_wrp.
+# the context package (generated based on the content of python/context)
+# will be extended using the content of context_wrp.
+# In practice, python users code should just import "context"
 pybind11_add_module(context_py srcpy/wrappers.cpp)
 target_link_libraries(context_py PRIVATE context ${catkin_LIBRARIES})
 set_target_properties(context_py PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_PYTHON_DESTINATION}
-  OUTPUT_NAME context)
+  OUTPUT_NAME context_wrp)
 install(TARGETS context_py DESTINATION ${CATKIN_GLOBAL_PYTHON_DESTINATION})
 
 # unit tests
