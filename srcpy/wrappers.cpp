@@ -11,7 +11,7 @@
 
 using namespace context;
 
-PYBIND11_MODULE(context, m)
+PYBIND11_MODULE(context_wrp, m)
 {
     pybind11::class_<Coordinates>(m, "Coordinates").def(pybind11::init<>());
 

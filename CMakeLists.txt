@@ -45,6 +45,9 @@ set_target_properties(context_py PROPERTIES
   OUTPUT_NAME context_wrp)
 install(TARGETS context_py DESTINATION ${CATKIN_GLOBAL_PYTHON_DESTINATION})
 
+# python package (will be extended with context_wrp)
+catkin_python_setup()
+
 # unit tests
 catkin_add_gtest(context_unit_tests
   tests/main.cpp
