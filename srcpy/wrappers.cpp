@@ -36,7 +36,9 @@ PYBIND11_MODULE(context_wrp, m)
         .def(pybind11::init<>())
         .def(pybind11::init<const Coordinates&,const Coordinates&>())
         .def_readwrite("position", &State::position)
-        .def_readwrite("velocity", &State::velocity);
+        .def_readwrite("velocity", &State::velocity)
+      .def("set_position",&State::set_position)
+      .def("set_velocity",&State::set_velocity);
 
     pybind11::class_<Ball>(m, "Ball")
         .def(pybind11::init<int>())

@@ -27,6 +27,7 @@ include_directories( include
 # creating library
 add_library(context
   src/velocity_compute.cpp
+  src/state.cpp
   src/ball.cpp
   src/low_pass_filter.cpp
   src/rotation.cpp
