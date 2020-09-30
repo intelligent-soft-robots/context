@@ -26,6 +26,7 @@ include_directories( include
 
 # creating library
 add_library(context
+  src/contact_information.cpp
   src/velocity_compute.cpp
   src/state.cpp
   src/ball.cpp

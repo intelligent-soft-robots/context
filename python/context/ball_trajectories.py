@@ -40,8 +40,16 @@ class BallTrajectories:
         self._trajectories = [ _read_trajectory(path+os.sep+f)
                                for f in files ]
 
+    def get_trajectory(self,index):
+        try :
+            return self._trajectories[index]
+        except IndexError:
+            error = "context.BallTrajectories: incorrect trajectory index {}."
+            error += " Max index: {}"
+            raise IndexError(error.format(index,len(self._trajectories)-1))
+        
     def random_trajectory(self):
-        trajectory = random.choice(self._trajectories)
-        for point in trajectory:
-            yield point
+        index = random.choice(list(range(len(self._trajectories))))
+        trajectory = self._trajectories[index]
+        return index,trajectory
         
