@@ -19,6 +19,7 @@ class BallStatus:
         
     def reset(self):
 
+        self.min_position_ball_target = None
         self.min_distance_ball_racket = float("+inf") # will be None if ball hit the racket
         self.min_distance_ball_target = float("+inf")
         self.max_ball_velocity = 0
@@ -53,7 +54,9 @@ class BallStatus:
         if hit_racket:
             d = _distance(self.ball_position,self.target_position)
             self.min_distance_ball_target = min(d,self.min_distance_ball_target)
-
+            if d==self.min_distance_ball_target:
+                self.min_position_ball_target = ball_position
+                
         # if post contact with racket, updating max ball velocity
         if hit_racket:
             v = _norm(self.ball_velocity)
