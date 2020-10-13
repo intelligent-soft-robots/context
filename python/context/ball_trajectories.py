@@ -32,14 +32,20 @@ class BallTrajectories:
 
     def __init__(self):
         path = ball_trajectories_folder()
-        files = [ f
+        self._files = sorted([ f
                   for f in os.listdir(path)
                   if os.path.isfile(os.path.join(path, f))
-                  and f.endswith(".json")]
-
+                  and f.endswith(".json") ])
         self._trajectories = [ _read_trajectory(path+os.sep+f)
-                               for f in files ]
+                               for f in self._files ]
 
+    def print_index_files(self):
+        for index,name in enumerate(self._files):
+            print(index,name)
+        
+    def get_file_name(self,index):
+        return self._files[index]
+        
     def get_trajectory(self,index):
         try :
             return self._trajectories[index]
