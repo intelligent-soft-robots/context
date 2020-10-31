@@ -1,31 +1,35 @@
-cmake_minimum_required(VERSION 2.8.7)
+cmake_minimum_required(VERSION 3.10.2)
 
 project(context)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED on)
 
-find_package(catkin REQUIRED COMPONENTS
-  pybind11_catkin
-  shared_memory
-  mpi_cmake_modules
-)
-search_for_eigen()
 
-# detecting if "normal" or realtime OS
-DEFINE_OS()
+################
+# Dependencies #
+################
 
-catkin_package(
- LIBRARIES context
- INCLUDE_DIRS include
- CATKIN_DEPENDS pybind11_catkin shared_memory mpi_cmake_modules
-)
+find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(mpi_cmake_modules REQUIRED)
+find_package(pybind11_vendor REQUIRED)
+find_package(pybind11 REQUIRED)
+find_package(shared_memory REQUIRED)
+ament_export_dependencies(
+  pybind11
+  shared_memory)
 
-include_directories( include
-                     ${catkin_INCLUDE_DIRS}
-                     ${Eigen_INCLUDE_DIRS} )
+# prepare to export all needed targets
+set(all_targets)
+set(all_target_exports)
 
-# creating library
-add_library(context
+
+###########
+# Library #
+###########
+
+add_library(${PROJECT_NAME} SHARED
   src/contact_information.cpp
   src/velocity_compute.cpp
   src/state.cpp
@@ -33,28 +37,61 @@ add_library(context
   src/low_pass_filter.cpp
   src/rotation.cpp
   src/transform.cpp)
-target_link_libraries(context ${catkin_LIBRARIES})
+target_include_directories(
+  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(${PROJECT_NAME} shared_memory)
+target_link_libraries(${PROJECT_NAME} shared_memory::shared_memory)
+ament_export_interfaces(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+list(APPEND all_targets ${PROJECT_NAME})
+list(APPEND all_target_exports export_${PROJECT_NAME})
 
-# python wrappers
-# note: the generated package is context_wrp.
-# the context package (generated based on the content of python/context)
-# will be extended using the content of context_wrp.
-# In practice, python users code should just import "context"
-pybind11_add_module(context_py srcpy/wrappers.cpp)
-target_link_libraries(context_py PRIVATE context ${catkin_LIBRARIES})
-set_target_properties(context_py PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_PYTHON_DESTINATION}
-  OUTPUT_NAME context_wrp)
-install(TARGETS context_py DESTINATION ${CATKIN_GLOBAL_PYTHON_DESTINATION})
 
-# python package (will be extended with context_wrp)
-catkin_python_setup()
+###################
+# Python wrappers #
+###################
 
-# unit tests
-catkin_add_gtest(context_unit_tests
-  tests/main.cpp
-  tests/unit_tests.cpp)
-target_link_libraries(context_unit_tests context ${catkin_libraries})
+add_library(${PROJECT_NAME}_py MODULE srcpy/wrappers.cpp)
+target_link_libraries(${PROJECT_NAME}_py PRIVATE pybind11::module)
+target_link_libraries(${PROJECT_NAME}_py PRIVATE ${PYTHON_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_py PRIVATE ${PROJECT_NAME})
+set_target_properties(${PROJECT_NAME}_py
+                      PROPERTIES PREFIX "" SUFFIX "${PYTHON_MODULE_EXTENSION}")
+target_include_directories(
+  ${PROJECT_NAME}_py
+  PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include> SYSTEM
+  PUBLIC ${PYTHON_INCLUDE_DIRS})
+_ament_cmake_python_get_python_install_dir()
+install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_INSTALL_DIR})
 
-# documentation 
-build_sphinx_documentation()
+
+##############
+# Unit tests #
+##############
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_${PROJECT_NAME}_cpp tests/main.cpp tests/unit_tests.cpp)
+  target_link_libraries(test_${PROJECT_NAME}_cpp ${PROJECT_NAME})
+endif()
+
+
+######################
+# Install and export #
+######################
+
+install(DIRECTORY include/ DESTINATION include)
+install(
+  TARGETS ${all_targets}
+  EXPORT ${all_target_exports}
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES
+  DESTINATION include)
+ament_package()
+
+
+
+

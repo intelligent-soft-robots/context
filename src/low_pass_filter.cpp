@@ -7,12 +7,12 @@ LowPassFilter::LowPassFilter() : average_size_(1), sum_(0)
     values_.resize(1);
 }
 
-LowPassFilter::LowPassFilter(int average_size)
+LowPassFilter::LowPassFilter(size_t average_size)
     : average_size_(average_size), sum_(0)
 {
 }
 
-void LowPassFilter::set_average_size(int average_size)
+void LowPassFilter::set_average_size(size_t average_size)
 {
     average_size_ = average_size;
     values_.resize(average_size);

@@ -17,13 +17,13 @@ public:
     /**
      * Set a filter with the specified moving window size
      */
-    LowPassFilter(int average_size);
+    LowPassFilter(size_t average_size);
 
     /**
      * Reset the moving averaging window size to a new value.
      * Call to this function may impact real time.
      */
-    void set_average_size(int average_size);
+    void set_average_size(size_t average_size);
 
     /**
      * Apply the filter
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    int average_size_;
+    size_t average_size_;
     std::deque<double> values_;
     double sum_;
 };
