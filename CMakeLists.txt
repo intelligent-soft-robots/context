@@ -51,19 +51,26 @@ list(APPEND all_target_exports export_${PROJECT_NAME})
 # Python wrappers #
 ###################
 
-add_library(${PROJECT_NAME}_py MODULE srcpy/wrappers.cpp)
-target_link_libraries(${PROJECT_NAME}_py PRIVATE pybind11::module)
-target_link_libraries(${PROJECT_NAME}_py PRIVATE ${PYTHON_LIBRARIES})
-target_link_libraries(${PROJECT_NAME}_py PRIVATE ${PROJECT_NAME})
-set_target_properties(${PROJECT_NAME}_py
+add_library(${PROJECT_NAME}_wrp MODULE srcpy/wrappers.cpp)
+target_link_libraries(${PROJECT_NAME}_wrp PRIVATE pybind11::module)
+target_link_libraries(${PROJECT_NAME}_wrp PRIVATE ${PYTHON_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_wrp PRIVATE ${PROJECT_NAME})
+set_target_properties(${PROJECT_NAME}_wrp
                       PROPERTIES PREFIX "" SUFFIX "${PYTHON_MODULE_EXTENSION}")
 target_include_directories(
-  ${PROJECT_NAME}_py
+  ${PROJECT_NAME}_wrp
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include> SYSTEM
   PUBLIC ${PYTHON_INCLUDE_DIRS})
 _ament_cmake_python_get_python_install_dir()
-install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_INSTALL_DIR})
+install(TARGETS ${PROJECT_NAME}_wrp DESTINATION ${PYTHON_INSTALL_DIR})
+
+
+######################
+# Python Native code #
+######################
+
+ament_python_install_package(${PROJECT_NAME} PACKAGE_DIR python/${PROJECT_NAME})
 
 
 ##############
