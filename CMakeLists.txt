@@ -25,6 +25,17 @@ set(all_targets)
 set(all_target_exports)
 
 
+#######################
+# Configuration files #
+#######################
+
+get_filename_component(TRAJECTORIES_DIR trajectories ABSOLUTE)
+install(DIRECTORY "${TRAJECTORIES_DIR}"
+  DESTINATION /opt/mpi-is/context)
+install(DIRECTORY "${TRAJECTORIES_DIR}"
+  DESTINATION opt/mpi-is/context)
+
+
 ###########
 # Library #
 ###########

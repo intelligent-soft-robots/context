@@ -3,18 +3,11 @@ import random
 from context_wrp import State
 
 
+
 # return abs path to src/context/trajectories
 def ball_trajectories_folder():
-    from catkin_pkg import workspaces
-    packages = workspaces.get_spaces()
-    context_pkg_path = [ p for p in packages
-                         if p.endswith("context") ][0]
-    return os.path.join(context_pkg_path,
-                        "python",
-                        "context",
-                        "trajectories")
+    return "/opt/mpi-is/context/trajectories"
                    
-
 
 def _read_trajectory(json_file):
     with open(json_file,"r") as f:
