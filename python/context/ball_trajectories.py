@@ -1,7 +1,5 @@
-import os
-import random
+import os,random,math
 from context_wrp import State
-
 
 
 # return abs path to src/context/trajectories
@@ -85,10 +83,12 @@ def line_trajectory(start,end,velocity,sampling_rate=0.01):
 
     # creating the trajectory, translating
     # one displacement vector per step
-    point = end
+    point = start
     states = []
-    for _ in range(nb_steps):
+    for cstep in range(nb_steps):
         point = [p+s for p,s in zip(point,step)]
+        if cstep==(nb_steps-1):
+            velnd=(0,0,0)
         states.append(State(point,velnd))
 
     # returning the trajectory
