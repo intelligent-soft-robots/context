@@ -47,4 +47,4 @@ void Rotation::rotate(Coordinates& coordinates)
     coordinates[2] = v[2];
 }
 
-};  // namespace context
+}  // namespace context
