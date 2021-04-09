@@ -51,7 +51,7 @@ class BallTrajectories:
         return index,trajectory
         
 
-def line_trajectory(start,end,velocity,sampling_rate=0.01):
+def velocity_line_trajectory(start,end,velocity,sampling_rate=0.01):
 
     '''
     start and end being n dimentional points, velocity
@@ -87,10 +87,52 @@ def line_trajectory(start,end,velocity,sampling_rate=0.01):
     states = []
     for cstep in range(nb_steps):
         point = [p+s for p,s in zip(point,step)]
-        if cstep==(nb_steps-1):
-            velnd=(0,0,0)
         states.append(State(point,velnd))
 
     # returning the trajectory
     return states
+
+
+def duration_line_trajectory(start,end,duration_ms,sampling_rate=0.01):
+
+    '''
+    start and end being n dimentional points, duration
+    a float value (milliseconds) and the sampling
+    rate between two points, returns a list of instance
+    of States corresponding to a point going from 
+    start to end over the provided duration
+    '''
+
+    # vector between end and start
+    vector = [e-s for e,s in zip(end,start)]
+
+    # distance between end and start
+    distance = math.sqrt(sum([v**2 for v in vector]))
+
+    # duration of motion between start and end,
+    # at constant velocity
+    duration = duration_ms/1000.0
+
+    # the velocity vector
+    velnd = [v/duration for v in vector]
+
+    # discrete number of steps to go from start
+    # to end at given speed and sampling rate
+    nb_steps = int ( (duration/sampling_rate) + 0.5 )
+    if nb_steps==0:
+        nb_steps=1
     
+    # displacement vector of one step 
+    step = [v/nb_steps for v in vector]
+
+    # creating the trajectory, translating
+    # one displacement vector per step
+    point = start
+    states = []
+    for cstep in range(nb_steps):
+        point = [p+s for p,s in zip(point,step)]
+        states.append(State(point,velnd))
+
+    # returning the trajectory
+    return states
+
