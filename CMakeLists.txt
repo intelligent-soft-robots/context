@@ -29,8 +29,11 @@ set(all_target_exports)
 #######################
 
 get_filename_component(TRAJECTORIES_DIR trajectories ABSOLUTE)
-install(DIRECTORY "${TRAJECTORIES_DIR}"
-  DESTINATION /opt/mpi-is/context)
+# installing files in /opt/mpi-is/ if exists
+if (EXISTS "/opt/mpi-is")
+  install(DIRECTORY "${TRAJECTORIES_DIR}"
+    DESTINATION /opt/mpi-is/context)
+endif()
 install(DIRECTORY "${TRAJECTORIES_DIR}"
   DESTINATION opt/mpi-is/context)
 
