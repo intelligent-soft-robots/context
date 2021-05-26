@@ -4,9 +4,10 @@ namespace context
 {
   ContactInformation::ContactInformation()
     : position{0,0,0},
-      contact_occured(false),
-      time_stamp(-1),
-      minimal_distance(-1)
+      contact_occured{false},
+      time_stamp{-1},
+      minimal_distance{-1},
+      disabled{false}
   {}
 
   void ContactInformation::register_distance(double d)

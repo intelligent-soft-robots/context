@@ -24,13 +24,15 @@ namespace context
       archive(position,
 	      contact_occured,
 	      time_stamp,
-	      minimal_distance);
+	      minimal_distance,
+	      disabled);
     }
   public:
     std::array<double,3> position;
     bool contact_occured;
     double time_stamp;
     double minimal_distance;
+    bool disabled;
   };
   
 }
