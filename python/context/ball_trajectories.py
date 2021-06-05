@@ -21,7 +21,11 @@ def _read_trajectory(json_file):
 
 class BallTrajectories:
 
-    def __init__(self):
+    # below : sampling rate ms of 10 :
+    # sampling rate at which the trajectories
+    # were recorded
+    
+    def __init__(self,sampling_rate_ms=10):
         path = ball_trajectories_folder()
         self._files = sorted([ f
                   for f in os.listdir(path)
@@ -29,7 +33,11 @@ class BallTrajectories:
                   and f.endswith(".json") ])
         self._trajectories = [ _read_trajectory(path+os.sep+f)
                                for f in self._files ]
+        self._sampling_rate_ms = sampling_rate_ms
 
+    def get_sampling_rate_ms(self):
+        return self._sampling_rate_ms
+        
     def print_index_files(self):
         for index,name in enumerate(self._files):
             print(index,name)
