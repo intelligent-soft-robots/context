@@ -57,7 +57,14 @@ class BallTrajectories:
         index = random.choice(list(range(len(self._trajectories))))
         trajectory = self._trajectories[index]
         return index,trajectory
-        
+
+    def get_different_random_trajectories(self,nb_trajectories):
+        if nb_trajectories > len(self._trajectories):
+            raise ValueError("BallTrajectories: only {} trajectories "
+                             "available ({} requested)".format(len(self._trajectories),
+                                                               nb_trajectories))
+        trajectories = random.shuffle(self._trajectories)
+        return trajectories[:nb_trajectories]
 
 def velocity_line_trajectory(start,end,velocity,sampling_rate=0.01):
 
