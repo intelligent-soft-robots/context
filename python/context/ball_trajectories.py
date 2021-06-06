@@ -63,8 +63,8 @@ class BallTrajectories:
             raise ValueError("BallTrajectories: only {} trajectories "
                              "available ({} requested)".format(len(self._trajectories),
                                                                nb_trajectories))
-        trajectories = random.shuffle(self._trajectories)
-        return trajectories[:nb_trajectories]
+        random.shuffle(self._trajectories)
+        return self._trajectories[:nb_trajectories]
 
 def velocity_line_trajectory(start,end,velocity,sampling_rate=0.01):
 
