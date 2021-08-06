@@ -37,7 +37,10 @@ class BallTrajectories:
 
     def get_sampling_rate_ms(self):
         return self._sampling_rate_ms
-        
+
+    def get_all_trajectories(self):
+        return self._trajectories
+    
     def print_index_files(self):
         for index,name in enumerate(self._files):
             print(index,name)
