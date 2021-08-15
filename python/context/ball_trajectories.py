@@ -21,7 +21,11 @@ def _read_trajectory(json_file):
 
 class BallTrajectories:
 
-    def __init__(self):
+    # below : sampling rate ms of 10 :
+    # sampling rate at which the trajectories
+    # were recorded
+    
+    def __init__(self,sampling_rate_ms=10):
         path = ball_trajectories_folder()
         self._files = sorted([ f
                   for f in os.listdir(path)
@@ -29,7 +33,14 @@ class BallTrajectories:
                   and f.endswith(".json") ])
         self._trajectories = [ _read_trajectory(path+os.sep+f)
                                for f in self._files ]
+        self._sampling_rate_ms = sampling_rate_ms
 
+    def get_sampling_rate_ms(self):
+        return self._sampling_rate_ms
+
+    def get_all_trajectories(self):
+        return self._trajectories
+    
     def print_index_files(self):
         for index,name in enumerate(self._files):
             print(index,name)
@@ -49,7 +60,14 @@ class BallTrajectories:
         index = random.choice(list(range(len(self._trajectories))))
         trajectory = self._trajectories[index]
         return index,trajectory
-        
+
+    def get_different_random_trajectories(self,nb_trajectories):
+        if nb_trajectories > len(self._trajectories):
+            raise ValueError("BallTrajectories: only {} trajectories "
+                             "available ({} requested)".format(len(self._trajectories),
+                                                               nb_trajectories))
+        random.shuffle(self._trajectories)
+        return self._trajectories[:nb_trajectories]
 
 def velocity_line_trajectory(start,end,velocity,sampling_rate=0.01):
 
