@@ -120,7 +120,7 @@ def duration_line_trajectory(start,end,duration_ms,sampling_rate=0.01):
     of States corresponding to a point going from 
     start to end over the provided duration
     '''
-
+    
     # vector between end and start
     vector = [e-s for e,s in zip(end,start)]
 
