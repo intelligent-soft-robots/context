@@ -15,6 +15,7 @@ class BallStatus:
                  target_position):
         
         self.target_position = target_position
+        self.target_distance_z_epsilon = 0.05
         self.reset()
         
     def reset(self):
@@ -55,10 +56,12 @@ class BallStatus:
 
         # if post contact with racket, updating min distance ball/target
         if self.hit_racket:
-            d = _distance(self.ball_position,self.target_position)
-            self.min_distance_ball_target = min(d,self.min_distance_ball_target)
-            if d==self.min_distance_ball_target:
-                self.min_position_ball_target = ball_position
+            if abs(self.ball_position[2]-self.target_position[2])<=self.target_distance_z_epsilon:
+                d = _distance(self.ball_position,self.target_position)
+                self.min_distance_ball_target = min(d,self.min_distance_ball_target)
+                if d==self.min_distance_ball_target:
+                    self.min_position_ball_target = ball_position
+
                 
         # if post contact with racket, updating max ball velocity
         if self.hit_racket:
