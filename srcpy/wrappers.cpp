@@ -1,14 +1,14 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include "shared_memory/shared_memory.hpp"
 #include "context/ball.hpp"
+#include "context/contact_information.hpp"
 #include "context/coordinates.hpp"
 #include "context/low_pass_filter.hpp"
 #include "context/rotation.hpp"
 #include "context/state.hpp"
 #include "context/transform.hpp"
 #include "context/velocity_compute.hpp"
-#include "context/contact_information.hpp"
+#include "shared_memory/shared_memory.hpp"
 
 using namespace context;
 
@@ -35,11 +35,11 @@ PYBIND11_MODULE(context_wrp, m)
 
     pybind11::class_<State>(m, "State")
         .def(pybind11::init<>())
-        .def(pybind11::init<const Coordinates&,const Coordinates&>())
+        .def(pybind11::init<const Coordinates&, const Coordinates&>())
         .def_readwrite("position", &State::position)
         .def_readwrite("velocity", &State::velocity)
-      .def("set_position",&State::set_position)
-      .def("set_velocity",&State::set_velocity);
+        .def("set_position", &State::set_position)
+        .def("set_velocity", &State::set_velocity);
 
     pybind11::class_<Ball>(m, "Ball")
         .def(pybind11::init<int>())
@@ -54,12 +54,11 @@ PYBIND11_MODULE(context_wrp, m)
         .def(pybind11::init<double, double, double, Coordinates>())
         .def("apply", &Transform::apply);
 
-  pybind11::class_<ContactInformation>(m,"ContactInformation")
-    .def(pybind11::init<>())
-    .def_readonly("position",&ContactInformation::position)
-    .def_readonly("contact_occured",&ContactInformation::contact_occured)
-    .def_readonly("time_stamp",&ContactInformation::time_stamp)
-    .def_readonly("minimal_distance",&ContactInformation::minimal_distance);
-
-
+    pybind11::class_<ContactInformation>(m, "ContactInformation")
+        .def(pybind11::init<>())
+        .def_readonly("position", &ContactInformation::position)
+        .def_readonly("contact_occured", &ContactInformation::contact_occured)
+        .def_readonly("time_stamp", &ContactInformation::time_stamp)
+        .def_readonly("minimal_distance",
+                      &ContactInformation::minimal_distance);
 }
