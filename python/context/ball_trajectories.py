@@ -36,6 +36,9 @@ class BallTrajectories:
         self._trajectories = [_read_trajectory(path + os.sep + f) for f in self._files]
         self._sampling_rate_ms = sampling_rate_ms
 
+    def size(self):
+        return len(self._files)
+
     def get_sampling_rate_ms(self):
         return self._sampling_rate_ms
 
