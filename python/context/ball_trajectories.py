@@ -1,4 +1,4 @@
-import os, random, math
+import os, random, math, o80_pam, pathlib
 from context_wrp import State
 
 
@@ -6,8 +6,15 @@ from context_wrp import State
 def ball_trajectories_folder():
     return "/opt/mpi-is/context/trajectories"
 
+def _read_trajectory(file):
+    if ".json" in file:
+        return _read_trajectory_json(file)
+    elif ".log" in file:
+        return _read_trajectory_o80_log(file)
+    else:
+        raise NotImplementedError("File format not supported for" + file)
 
-def _read_trajectory(json_file):
+def _read_trajectory_json(json_file):
     with open(json_file, "r") as f:
         content = f.read()
     content = content.strip()
@@ -15,6 +22,14 @@ def _read_trajectory(json_file):
     # State : wrapped over from include/context/state.hpp
     # can be serialized for interprocess communication
     states = [State(p[:3], p[3:]) for p in d]
+    return states
+
+def _read_trajectory_o80_log(log_file):
+    log_file = pathlib.Path(log_file)
+    d = list(o80_pam.robot_ball_parser.parse(log_file))
+    # State : wrapped over from include/context/state.hpp
+    # can be serialized for interprocess communication
+    states = [State(p[0][2], p[0][3]) for p in d]
     return states
 
 
@@ -30,7 +45,7 @@ class BallTrajectories:
             [
                 f
                 for f in os.listdir(path)
-                if os.path.isfile(os.path.join(path, f)) and f.endswith(".json")
+                if os.path.isfile(os.path.join(path, f)) and (f.endswith(".json") or f.endswith(".log"))
             ]
         )
         self._trajectories = [_read_trajectory(path + os.sep + f) for f in self._files]
