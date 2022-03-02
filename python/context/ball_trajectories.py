@@ -90,6 +90,36 @@ class BallTrajectories:
             )
         random.shuffle(self._trajectories)
         return self._trajectories[:nb_trajectories]
+    
+    def get_trajectory_random_rotation(self, index, rotation_range):
+
+        """
+        Rotate trajectory counterclockwise by a given angle (in degree) around it's first position.
+        """
+
+        rotation_range_radians = rotation_range * math.pi / 180
+        angle = (random.random()-0.5) * rotation_range_radians
+
+        origin_x, origin_y, _ = self._trajectories[index][0].position
+
+        print("len traj:", len(self._trajectories[index]))
+        trajectory_rotated = [State([
+                origin_x + math.cos(angle) * (p_x - origin_x) - math.sin(angle) * (p_y - origin_y),
+                origin_y + math.sin(angle) * (p_x - origin_x) + math.cos(angle) * (p_y - origin_y),
+                p_z],[
+                math.cos(angle) * v_x - math.sin(angle) * v_y,
+                math.sin(angle) * v_x + math.cos(angle) * v_y,
+                v_z])
+            for (p_x, p_y, p_z),(v_x, v_y, v_z) in
+                [(self._trajectories[index][i].position,self._trajectories[index][i].velocity)
+                for i in range(len(self._trajectories[index]))]]
+        print("len rot:", len(trajectory_rotated))
+
+        return trajectory_rotated
+
+    def random_trajectory_random_rotation(self, rotation_range):
+        index = random.choice(list(range(len(self._trajectories))))
+        return index, self.get_trajectory_random_rotation(index, rotation_range)
 
 
 def velocity_line_trajectory(start, end, velocity, sampling_rate=0.01):
@@ -176,3 +206,4 @@ def duration_line_trajectory(start, end, duration_ms, sampling_rate=0.01):
 
     # returning the trajectory
     return states
+
