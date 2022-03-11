@@ -1,0 +1,2 @@
+Ball trajectory files are now located in the pam_configuration package:
+https://github.com/intelligent-soft-robots/pam_configuration

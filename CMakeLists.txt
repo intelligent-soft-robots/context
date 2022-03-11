@@ -24,20 +24,6 @@ set(all_targets)
 set(all_target_exports)
 
 
-#######################
-# Configuration files #
-#######################
-
-get_filename_component(TRAJECTORIES_DIR trajectories ABSOLUTE)
-# installing files in /opt/mpi-is/ if exists
-if (EXISTS "/opt/mpi-is")
-  install(DIRECTORY "${TRAJECTORIES_DIR}"
-    DESTINATION /opt/mpi-is/context)
-endif()
-install(DIRECTORY "${TRAJECTORIES_DIR}"
-  DESTINATION opt/mpi-is/context)
-
-
 ###########
 # Library #
 ###########

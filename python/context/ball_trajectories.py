@@ -1,11 +1,15 @@
-import os, random, math
+import os, random, math, pathlib
+import pam_configuration
 from context_wrp import State
 
 
 # return abs path to src/context/trajectories
-def ball_trajectories_folder():
-    return "/opt/mpi-is/context/trajectories"
-
+def ball_trajectories_folder()->pathlib.Path:
+    path = pathlib.Path(pam_configuration.get_path()) / "context" / "ball_trajectories"
+    if not path.exists():
+        raise FileNotFoundError("context package: failed to find context/ball_trajectories"
+                                "in ",pam_configuration.get_path())
+    return path
 
 def _read_trajectory(json_file):
     with open(json_file, "r") as f:
@@ -28,14 +32,14 @@ class BallTrajectories:
         path = ball_trajectories_folder()
         self._files = sorted(
             [
-                f
+                pathlib.Path(f)
                 for f in os.listdir(path)
                 if os.path.isfile(os.path.join(path, f)) and f.endswith(".json")
             ]
         )
-        self._trajectories = [_read_trajectory(path + os.sep + f) for f in self._files]
+        self._trajectories = [_read_trajectory(path / f) for f in self._files]
         self._sampling_rate_ms = sampling_rate_ms
-
+        
     def size(self):
         return len(self._files)
 
