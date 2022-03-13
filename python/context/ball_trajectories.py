@@ -1,5 +1,6 @@
 import os, random, math, o80_pam, pathlib
 from context_wrp import State
+from scipy import interpolate
 
 
 # return abs path to src/context/trajectories
@@ -99,10 +100,10 @@ class BallTrajectories:
 
         rotation_range_radians = rotation_range * math.pi / 180
         angle = (random.random()-0.5) * rotation_range_radians
+        len_trajectory = len(self._trajectories[index])
 
         origin_x, origin_y, _ = self._trajectories[index][0].position
 
-        print("len traj:", len(self._trajectories[index]))
         trajectory_rotated = [State([
                 origin_x + math.cos(angle) * (p_x - origin_x) - math.sin(angle) * (p_y - origin_y),
                 origin_y + math.sin(angle) * (p_x - origin_x) + math.cos(angle) * (p_y - origin_y),
@@ -112,14 +113,28 @@ class BallTrajectories:
                 v_z])
             for (p_x, p_y, p_z),(v_x, v_y, v_z) in
                 [(self._trajectories[index][i].position,self._trajectories[index][i].velocity)
-                for i in range(len(self._trajectories[index]))]]
-        print("len rot:", len(trajectory_rotated))
+                for i in range(len_trajectory)]]
 
         return trajectory_rotated
 
     def random_trajectory_random_rotation(self, rotation_range):
         index = random.choice(list(range(len(self._trajectories))))
         return index, self.get_trajectory_random_rotation(index, rotation_range)
+
+    def get_trajectory_interpolate_time(self, index, fac):
+        len_traj = len(self._trajectories[index])
+
+        interpol_traj_func_pos = interpolate.interp1d(list(range(len_traj)), [self._trajectories[index][i].position for i in range(len_traj)], axis=0)
+        interpol_traj_func_vel = interpolate.interp1d(list(range(len_traj)), [self._trajectories[index][i].velocity for i in range(len_traj)], axis=0)
+
+        trajectory_interpolated = [State(interpol_traj_func_pos(pos*fac), interpol_traj_func_vel(pos*fac))
+            for pos in range(int((len_traj-1)/fac+1))]
+        
+        return trajectory_interpolated
+
+    def random_trajectory_interpolated_time(self, fac):
+        index = random.choice(list(range(len(self._trajectories))))
+        return index, self.get_trajectory_interpolate_time(index, fac)        
 
 
 def velocity_line_trajectory(start, end, velocity, sampling_rate=0.01):
