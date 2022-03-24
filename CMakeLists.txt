@@ -77,9 +77,16 @@ ament_python_install_package(${PROJECT_NAME} PACKAGE_DIR python/${PROJECT_NAME})
 ##############
 
 if(BUILD_TESTING)
+  
+  # cpp tests
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_${PROJECT_NAME}_cpp tests/main.cpp tests/unit_tests.cpp)
   target_link_libraries(test_${PROJECT_NAME}_cpp ${PROJECT_NAME})
+
+  # python unit tests
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(test_${PROJECT_NAME}_python tests/unit_tests.py)
+  
 endif()
 
 

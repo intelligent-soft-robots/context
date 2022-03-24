@@ -1,92 +1,451 @@
-import os, random, math, pathlib
+"""
+Module providing convenience classes and functions aiming at
+accessing recorded ball trajectories.
+It also provides method for generating ball trajectories.
+"""
+
+# for typing
+from __future__ import annotations
+import typing
+import nptyping as npt
+
+import os, random, math, pathlib, typing, h5py
+import numpy as np
+
 import pam_configuration
+import tennicam_client
 from context_wrp import State
 
+# 3: 3d position , Any: nb of points in trajectory
+Trajectory = npt.NDArray[(typing.Any, 3), np.float32]
 
-# return abs path to src/context/trajectories
-def ball_trajectories_folder()->pathlib.Path:
-    path = pathlib.Path(pam_configuration.get_path()) / "context" / "ball_trajectories"
-    if not path.exists():
-        raise FileNotFoundError("context package: failed to find context/ball_trajectories"
-                                "in ",pam_configuration.get_path())
-    return path
+# List of time stamps, in microseconds
+TimeStamps = npt.NDArray[(typing.Any,), np.uint]
 
-def _read_trajectory(json_file):
-    with open(json_file, "r") as f:
-        content = f.read()
-    content = content.strip()
-    d = eval(content)["ob"]
-    # State : wrapped over from include/context/state.hpp
-    # can be serialized for interprocess communication
-    states = [State(p[:3], p[3:]) for p in d]
-    return states
+# set of trajectories
+Trajectories = typing.Sequence[Trajectory]
+
+# trajectories and related time stamps
+StampedTrajectory = typing.Tuple[TimeStamps, Trajectory]
+StampedTrajectories = typing.Sequence[Trajectories]
+
+# State is a class encapsulating a 3d position and a 3d velocity.
+# It is a wrapper over the c++ class /include/context/state.hpp.
+# It has the advantage of being serializable, i.e. usable
+# as state for o80.
+StateTrajectory = typing.Sequence[State]
+
+
+def _list_files(
+    dir_path: pathlib.Path, extension: str = "", prefix: str = ""
+) -> typing.List[pathlib.Path]:
+    """
+    returns the list of file in dir_path of
+    the specified extension and/or the specified prefix
+    """
+    paths = sorted(
+        [
+            f
+            for f in dir_path.iterdir()
+            if f.is_file()
+            and str(f).endswith(extension)
+            and str(f.name).startswith(prefix)
+        ]
+    )
+    return paths
+
+
+def to_stamped_trajectory(
+    input: StateTrajectory, sampling_rate_seconds: float
+) -> StampedTrajectory:
+
+    size = len(input)
+    stamps = np.array([i * sampling_rate_seconds * 1e6 for i in range(size)], np.uint)
+    positions = np.array([np.array(s.position) for s in input])
+    return stamps, positions
+
+
+def to_state_trajectory(input: StampedTrajectory) -> StateTrajectory:
+    """
+    Converts a StampedTrajectories to a StateTrajectory, i.e. 
+    to a list of instances encapsulating a 3d position and a 3d velocity.
+    The velocities are estimated by performing finite differences.
+    """
+
+    # computing velocities by finite difference
+    t1 = input[0][:-1]
+    t2 = input[0][1:]
+    dt = (t2 - t1) * 1e-6  # also converting from us to seconds
+    positions1 = input[1][:-1, :]
+    positions2 = input[1][1:, :]
+    dp = positions2 - positions1
+    velocities = np.ndarray(input[1].shape, np.float32)
+    velocities[:-1, :] = (dp.T / dt).T
+    velocities[-1, :] = velocities[-2, :]
+
+    # converting to States and returning
+    def _get_state(pos_vel: npt.NDArray[6]) -> State:
+        return State(pos_vel[:3], pos_vel[3:])
+
+    pos_vels = np.concatenate((input[1], velocities), axis=1)
+    return list(np.apply_along_axis(_get_state, axis=1, arr=pos_vels))
+
+
+class RecordedBallTrajectories:
+
+    """
+    Class for parsing an hdf5 file containing sets of
+    recorded ball trajectories.
+
+    The expected structure of the file is:
+    To get list of time stamps (micro seconds):
+    d[group name: str][index: int]["time_stamps"]
+    To get related list of 3d positions:
+    d[group name: str][index: int]["trajectory"]
+
+    To ensure the hdf5 file is properly closed, it is
+    adviced to use the context manager of this class
+    (i.e. ```with RecordedBallTrajectories() as rbt ...```)
+
+    Parameters
+    ----------
+    path: (optional)
+      path to the hdf5 file. If omitted, the file at the
+      default path will be used, i.e.
+      ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
+      /opt/mpi-is/pam/context/ball_trajectories.hdf5
+      (as installed by the pam_configuration package)
+    """
+
+    _TIME_STAMPS = "time_stamps"
+    _TRAJECTORY = "trajectory"
+
+    def __init__(self, path: pathlib.Path = None):
+        if path is None:
+            path = self.get_default_path()
+        self._f = h5py.File(path, "r+")
+
+    @staticmethod
+    def get_default_path() -> pathlib.Path:
+        """
+        Returns the default path to the file hosting all ball trajectories
+        (i.e. in ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
+        /opt/mpi-is/pam/context/ball_trajectories.hdf5, as installed by
+        the pam_configuration package).
+        """
+        path = (
+            pathlib.Path(pam_configuration.get_path())
+            / "context"
+            / "ball_trajectories.hdf5"
+        )
+        if not path.exists():
+            raise FileNotFoundError(
+                "context package: failed to find the file {}".format(path)
+            )
+        return path
+
+    def get_groups(self) -> typing.Tuple[str]:
+        """
+        Returns all the group contained by the file
+        (i.e. all the sets)
+        """
+        return tuple(self._f.keys())
+
+    def get_indexes(self, group: str) -> typing.Tuple[int]:
+        """
+        Returns all the indexes of the specified group, or
+        raise a ValueError if no such group.
+        """
+        g = self._f[group]
+        return tuple(g.keys())
+
+    def get_stamped_trajectory(
+        self, group: str, index: int, direct: bool = False
+    ) -> StampedTrajectory:
+        """
+        Returns a the stamped trajectory, or raise a ValueError
+        if no such group, or no such index in the group.
+        If not direct, a tuple of h5py data instances will be 
+        returned (can not be accessed once the file is closed). Otherwise
+        a tuple of numpy arrays is returned.
+        """
+        g = self._f[group][str(index)]
+        # returning directly the h5py datasets
+        if not direct:
+            return g[self._TIME_STAMPS], g[self._TRAJECTORY]
+        # converting the h5py datasets into numpy arrays
+        time_stamps_dset = g[self._TIME_STAMPS]
+        trajectory_dset = g[self._TRAJECTORY]
+        time_stamps = np.zeros(time_stamps_dset.shape, np.uint)
+        trajectory = np.zeros(trajectory_dset.shape, np.float32)
+        time_stamps_dset.read_direct(time_stamps)
+        trajectory_dset.read_direct(trajectory)
+        return time_stamps, trajectory
+
+    def get_stamped_trajectories(
+        self, group: str, direct: bool = False
+    ) -> typing.Dict[int, StampedTrajectory]:
+        """
+        Returns all trajectories of the group, or raise a ValueError
+        if no such group.
+        If not direct, a tuple of h5py data instances will be 
+        returned (can not be accessed once the file is closed). Otherwise
+        a tuple of numpy arrays is returned.
+        """
+        indexes = self.get_indexes(group)
+        return {
+            int(index): self.get_stamped_trajectory(group, index, direct=direct)
+            for index in indexes
+        }
+
+    def add_tennicam_trajectories(
+        self, group_name: str, tennicam_path: pathlib.Path
+    ) -> None:
+        """
+        It is assumed that tennicam_path is a directory hosting (non recursively)
+        a collection of files named tennicam_* that have been generated by the executable
+        tennicam_client_logger (package tennicam_client). This function
+        will parse all these files and add them to the hdf5 under the specified
+        group name (or raise a FileNotFoundError if tennicam_path does not
+        exists).
+        """
+
+        def _read_trajectory(tennicam_file: pathlib.Path) -> StampedTrajectory:
+            """
+            Parse the file and returned the corresponding
+            stamped trajectory.
+            """
+            time_stamps = []
+            trajectory = []
+            start_time = None
+            for ball_id, time_stamp, position, _ in tennicam_client.parse(
+                tennicam_file
+            ):
+                if ball_id >= 0:
+                    time_stamp = int(time_stamp * 1e-3)  # from nano to micro seconds
+                    if start_time is None:
+                        start_time = time_stamp
+                    time_stamp -= start_time
+                    time_stamps.append(time_stamp)
+                    trajectory.append(position)
+            return np.array(time_stamps, np.uint), np.array(trajectory, np.float32)
+
+        def _read_folder(tennicam_path: pathlib.Path) -> StampedTrajectories:
+            """
+            List all the file in tennicam_path that have the tennicam_ prefix,
+            parse them and returns the corresponding list of stamped trajectories.
+            """
+            files = _list_files(tennicam_path, prefix="tennicam_")
+            stamped_trajectories = [_read_trajectory(tennicam_path / f) for f in files]
+            return stamped_trajectories
+
+        def _save_trajectory(
+            group: h5py._hl.group.Group,
+            index: int,
+            stamped_trajectory: StampedTrajectory,
+        ):
+            """
+            Create in the group a new subgroup named according to the index
+            and add to it 2 datasets, "time_stamps" (list of microseconds
+            time stamps) and "trajectory" (list of corresponding 3d positions)
+            """
+            # creating a new group for this trajectory
+            traj_group = group.create_group(str(index))
+            # adding 2 datasets: time_stamps and positions
+            time_stamps = stamped_trajectory[0]
+            positions = stamped_trajectory[1]
+            traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
+            traj_group.create_dataset(self._TRAJECTORY, data=positions)
+
+        # reading all trajectories present in the directory
+        stamped_trajectories = _read_folder(tennicam_path)
+
+        # adding the new group to the hdf5 file
+        group = self._f.create_group(group_name)
+
+        # adding all trajectories as datasets to this group
+        for index, stamped_trajectory in enumerate(stamped_trajectories):
+            _save_trajectory(group, index, stamped_trajectory)
+
+    def add_json_trajectories(
+        self, group_name: str, json_path: pathlib.Path, sampling_rate_us: int
+    ) -> None:
+        """
+        It is assumed that json_path is a directory hosting (non recursively)
+        a collection of files named *.json. Each file host the (string) representation of
+        a dictionary with the key "obj" associated to an list of a 6d array
+        (3d position and 3d velocities).
+        This function will parse all these files and add them to the hdf5 under the specified
+        group name (or raise a FileNotFoundError if tennicam_path does not
+        exists). (note: the velocities values are ignored, and the time stamp list
+        is created based on the sampling rate)
+        """
+
+        def _read_trajectory(json_file: pathlib.Path) -> Trajectory:
+            """
+            Parse the json file and return the trajectory it
+            hosts.
+            """
+            with open(json_file, "r") as f:
+                content = f.read()
+            content = content.strip()
+            d = eval(content)["ob"]
+            trajectory = np.array(d, np.float32)[:, :3]  # keeping only the position
+            return trajectory
+
+        def _read_folder(json_path: pathlib.Path) -> Trajectories:
+            """
+            List the json files that are at the root of the path,
+            parse them and return the corresponding trajectories.
+            """
+            trajectories = [
+                _read_trajectory(json_path / f) for f in _list_files(json_path, ".json")
+            ]
+            return trajectories
+
+        def _save_trajectory(
+            group: h5py._hl.group.Group, index: int, trajectory: Trajectory
+        ):
+            """
+            Create under the group a new subgroup named after the index,
+            and add 2 datasets, "time_stamps" (list of time stamps in
+            micro seconds inferred using the sample rate) and
+            "trajectory", the corresponding list of 3d positions.
+            """
+            # creating a new group for this trajectory
+            traj_group = group.create_group(str(index))
+            # inferring time stamps
+            time_stamps = np.array(
+                [i * sampling_rate_us for i in range(trajectory.shape[0])], np.int32
+            )
+
+            # adding 2 datasets: time_stamps and positions
+            traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
+            traj_group.create_dataset(self._TRAJECTORY, data=trajectory)
+
+        # reading all trajectories present in the directory
+        trajectories = _read_folder(json_path)
+
+        # adding the new group to the hdf5 file
+        group = self._f.create_group(group_name)
+
+        # adding all trajectories as datasets to this group
+        for index, trajectory in enumerate(trajectories):
+            _save_trajectory(group, index, trajectory)
+
+    def close(self):
+        """
+        Close the hdf5 file
+        """
+        if self._f:
+            self._f.close()
+            self._f = None
+
+    def __enter__(self) -> RecordedBallTrajectories:
+        """
+        For the use of this class as a context manager
+        which closes the hdf5.
+        """
+        return self
+
+    def __exit__(self, type, value, traceback):
+        """
+        For the use of this class as a context manager
+        which closes the hdf5.
+        """
+        self._f.close()
+        self._f = None
 
 
 class BallTrajectories:
+    """
+    Convenience wrapper over a hdf5 file which contains 
+    sets ("groups") of ball trajectories. 
 
-    # below : sampling rate ms of 10 :
-    # sampling rate at which the trajectories
-    # were recorded
+    The constructor loads a group of trajectories in the memory,
+    and methods provide convenience functions to access them.
 
-    def __init__(self, sampling_rate_ms=10):
-        path = ball_trajectories_folder()
-        self._files = sorted(
-            [
-                pathlib.Path(f)
-                for f in os.listdir(path)
-                if os.path.isfile(os.path.join(path, f)) and f.endswith(".json")
-            ]
-        )
-        self._trajectories = [_read_trajectory(path / f) for f in self._files]
-        self._sampling_rate_ms = sampling_rate_ms
-        
-    def size(self):
-        return len(self._files)
+    A trajectory is tuple of two lists, one with time stamps
+    (in microseconds) and one with related 3d positions.
 
-    def get_sampling_rate_ms(self):
-        return self._sampling_rate_ms
+    Parameters
+    ----------
+    group:
+      name of the group of trajectories to load
+    hdf5_path: optional
+      absolute path to the hdf5 file to load. If None, 
+      the default file will be used (i.e. either 
+      ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
+      /opt/mpi-is/pam/context/ball_trajectories.hdf5
+    """
 
-    def get_all_trajectories(self):
-        return self._trajectories
+    def __init__(self, group: str, hdf5_path: pathlib.Path = None):
+        if hdf5_path is None:
+            hdf5_path = RecordedBallTrajectories.get_default_path()
 
-    def print_index_files(self):
-        for index, name in enumerate(self._files):
-            print(index, name)
+        self._path: pathlib.Path = hdf5_path
 
-    def get_file_name(self, index):
-        return self._files[index]
+        with RecordedBallTrajectories(hdf5_path) as rbt:
+            self._data: typing.Dict[
+                int, StampedTrajectories
+            ] = rbt.get_stamped_trajectories(group, direct=True)
 
-    def get_trajectory(self, index):
-        try:
-            return self._trajectories[index]
-        except IndexError:
-            error = "context.BallTrajectories: incorrect trajectory index {}."
-            error += " Max index: {}"
-            raise IndexError(error.format(index, len(self._trajectories) - 1))
+    def size(self) -> int:
+        """
+        Returns the number of trajectories that have been loaded.
+        """
+        return len(self._data)
 
-    def random_trajectory(self):
-        index = random.choice(list(range(len(self._trajectories))))
-        trajectory = self._trajectories[index]
-        return index, trajectory
+    def get_all_trajectories(self) -> typing.Dict[int, StampedTrajectories]:
+        """
+        Returns a dictionary with key the index of the trajectory and
+        the trajectories as values.
+        """
+        return self._data
 
-    def get_different_random_trajectories(self, nb_trajectories):
-        if nb_trajectories > len(self._trajectories):
+    def get_trajectory(self, index: int) -> StampedTrajectory:
+        """
+        Returns the trajectory at the requested index.
+        """
+        return self._data[index]
+
+    def random_trajectory(self) -> StampedTrajectory:
+        """
+        Returns one of the trajectory, randomly selected.
+        """
+        index = random.choice(list(range(len(self._data.keys()))))
+        return index, self._data[index]
+
+    def get_different_random_trajectories(
+        self, nb_trajectories: int
+    ) -> StampedTrajectories:
+        """
+        Returns a list of trajectories, randomly 
+        ordered and selected.
+        """
+        if nb_trajectories > self.size():
             raise ValueError(
                 "BallTrajectories: only {} trajectories "
                 "available ({} requested)".format(
                     len(self._trajectories), nb_trajectories
                 )
             )
-        random.shuffle(self._trajectories)
-        return self._trajectories[:nb_trajectories]
+        indexes = list(self._data.keys())
+        random.shuffle(indexes)
+        return [self._data[index] for index in indexes[:nb_trajectories]]
 
 
-def velocity_line_trajectory(start, end, velocity, sampling_rate=0.01):
+def velocity_line_trajectory(
+    start: typing.Sequence[float],
+    end: typing.Sequence[float],
+    velocity: float,
+    sampling_rate: float = 0.01,
+) -> StateTrajectory:
 
     """
-    start and end being n dimentional points, velocity
+    Start and end being n dimentional points, velocity
     a float value (meter per seconds) and the sampling
-    rate between two points, returns a list of instance
+    rate between two points (in seconds), returns a list of instance
     of States corresponding to a point going from
     start to end at the given velocity
     """
@@ -123,12 +482,17 @@ def velocity_line_trajectory(start, end, velocity, sampling_rate=0.01):
     return states
 
 
-def duration_line_trajectory(start, end, duration_ms, sampling_rate=0.01):
+def duration_line_trajectory(
+    start: typing.Sequence[float],
+    end: typing.Sequence[float],
+    duration_ms: float,
+    sampling_rate: float = 0.01,
+) -> StateTrajectory:
 
     """
-    start and end being n dimentional points, duration
+    Start and end being n dimentional points, duration
     a float value (milliseconds) and the sampling
-    rate between two points, returns a list of instance
+    rate between two points (in seconds), returns a list of instance
     of States corresponding to a point going from
     start to end over the provided duration
     """
