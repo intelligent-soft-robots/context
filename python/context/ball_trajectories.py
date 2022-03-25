@@ -9,7 +9,7 @@ from __future__ import annotations
 import typing
 import nptyping as npt
 
-import os, random, math, pathlib, typing, h5py
+import os, random, math, pathlib, h5py
 import numpy as np
 
 import pam_configuration
@@ -73,9 +73,7 @@ def to_state_trajectory(input: StampedTrajectory) -> StateTrajectory:
     """
 
     # computing velocities by finite difference
-    t1 = input[0][:-1]
-    t2 = input[0][1:]
-    dt = (t2 - t1) * 1e-6  # also converting from us to seconds
+    dt = np.diff(input[0]) * 1e-6  # also converting from us to seconds
     positions1 = input[1][:-1, :]
     positions2 = input[1][1:, :]
     dp = positions2 - positions1
@@ -273,10 +271,10 @@ class RecordedBallTrajectories:
         """
         It is assumed that json_path is a directory hosting (non recursively)
         a collection of files named *.json. Each file host the (string) representation of
-        a dictionary with the key "obj" associated to an list of a 6d array
+        a dictionary with the key "ob" associated to an list of a 6d array
         (3d position and 3d velocities).
         This function will parse all these files and add them to the hdf5 under the specified
-        group name (or raise a FileNotFoundError if tennicam_path does not
+        group name (or raise a FileNotFoundError if json_path does not
         exists). (note: the velocities values are ignored, and the time stamp list
         is created based on the sampling rate)
         """
@@ -287,10 +285,8 @@ class RecordedBallTrajectories:
             hosts.
             """
             with open(json_file, "r") as f:
-                content = f.read()
-            content = content.strip()
-            d = eval(content)["ob"]
-            trajectory = np.array(d, np.float32)[:, :3]  # keeping only the position
+                content = json.load(f)
+            trajectory = np.array(content["ob"], np.float32)[:, :3]  # keeping only the position
             return trajectory
 
         def _read_folder(json_path: pathlib.Path) -> Trajectories:
