@@ -9,7 +9,7 @@ from __future__ import annotations
 import typing
 import nptyping as npt
 
-import os, random, math, pathlib, h5py
+import os, random, math, pathlib, h5py, json
 import numpy as np
 
 import pam_configuration
@@ -124,12 +124,19 @@ class RecordedBallTrajectories:
         self._f = h5py.File(path, "r+")
 
     @staticmethod
-    def get_default_path() -> pathlib.Path:
+    def get_default_path(create:bool=False) -> pathlib.Path:
         """
         Returns the default path to the file hosting all ball trajectories
         (i.e. in ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
         /opt/mpi-is/pam/context/ball_trajectories.hdf5, as installed by
         the pam_configuration package).
+
+        Parameters
+        ----------
+        create: optional
+          create an empty file if the file does not exists at the 
+          default location. If create is False and the file does
+          not exists, a FileNotFoundError is raised.
         """
         path = (
             pathlib.Path(pam_configuration.get_path())
@@ -137,9 +144,10 @@ class RecordedBallTrajectories:
             / "ball_trajectories.hdf5"
         )
         if not path.exists():
-            raise FileNotFoundError(
-                "context package: failed to find the file {}".format(path)
-            )
+            if not create:
+                raise FileNotFoundError(
+                    "context package: failed to find the file {}".format(path)
+                )
         return path
 
     def get_groups(self) -> typing.Tuple[str]:
@@ -206,6 +214,10 @@ class RecordedBallTrajectories:
         will parse all these files and add them to the hdf5 under the specified
         group name (or raise a FileNotFoundError if tennicam_path does not
         exists).
+
+        Returns
+        -------
+        The number of trajectories added to the file.
         """
 
         def _read_trajectory(tennicam_file: pathlib.Path) -> StampedTrajectory:
@@ -265,9 +277,11 @@ class RecordedBallTrajectories:
         for index, stamped_trajectory in enumerate(stamped_trajectories):
             _save_trajectory(group, index, stamped_trajectory)
 
+        return len(stamped_trajectories)
+            
     def add_json_trajectories(
         self, group_name: str, json_path: pathlib.Path, sampling_rate_us: int
-    ) -> None:
+    ) -> int:
         """
         It is assumed that json_path is a directory hosting (non recursively)
         a collection of files named *.json. Each file host the (string) representation of
@@ -277,6 +291,10 @@ class RecordedBallTrajectories:
         group name (or raise a FileNotFoundError if json_path does not
         exists). (note: the velocities values are ignored, and the time stamp list
         is created based on the sampling rate)
+
+        Returns
+        -------
+        The number of trajectories added to the file.
         """
 
         def _read_trajectory(json_file: pathlib.Path) -> Trajectory:
@@ -285,7 +303,9 @@ class RecordedBallTrajectories:
             hosts.
             """
             with open(json_file, "r") as f:
-                content = json.load(f)
+                content = f.read()
+            content = content.strip()
+            content = eval(content)
             trajectory = np.array(content["ob"], np.float32)[:, :3]  # keeping only the position
             return trajectory
 
@@ -328,6 +348,8 @@ class RecordedBallTrajectories:
         # adding all trajectories as datasets to this group
         for index, trajectory in enumerate(trajectories):
             _save_trajectory(group, index, trajectory)
+
+        return len(trajectories)
 
     def close(self):
         """

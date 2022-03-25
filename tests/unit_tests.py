@@ -148,14 +148,16 @@ def test_add_trajectories(
 
     with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
         if formatting == _JSON_GROUP:
-            rbt.add_json_trajectories(
+            nb_added = rbt.add_json_trajectories(
                 group_name, working_directory, _SAMPLING_RATE * 1e6
             )
             expected_size = _NB_JSONS
         else:
-            rbt.add_tennicam_trajectories(group_name, working_directory)
+            nb_added = rbt.add_tennicam_trajectories(group_name, working_directory)
             expected_size = _NB_TENNICAMS
 
+    assert nb_added == expected_size
+            
     with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
         assert group_name in rbt.get_groups()
         assert len(rbt.get_indexes(group_name)) == expected_size
