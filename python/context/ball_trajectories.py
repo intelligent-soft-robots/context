@@ -12,15 +12,19 @@ import nptyping as npt
 import os, random, math, pathlib, h5py, json
 import numpy as np
 
+import o80
 import pam_configuration
 import tennicam_client
-from context_wrp import State
+import context_wrp
 
 # 3: 3d position , Any: nb of points in trajectory
 Trajectory = npt.NDArray[(typing.Any, 3), np.float32]
 
 # List of time stamps, in microseconds
 TimeStamps = npt.NDArray[(typing.Any,), np.uint]
+
+# List of time durations, in microseconds
+Durations = npt.NDArray[(typing.Any,), np.uint]
 
 # set of trajectories
 Trajectories = typing.Sequence[Trajectory]
@@ -29,19 +33,18 @@ Trajectories = typing.Sequence[Trajectory]
 StampedTrajectory = typing.Tuple[TimeStamps, Trajectory]
 StampedTrajectories = typing.Sequence[Trajectories]
 
-# State is a class encapsulating a 3d position and a 3d velocity.
-# It is a wrapper over the c++ class /include/context/state.hpp.
-# It has the advantage of being serializable, i.e. usable
-# as state for o80.
-StateTrajectory = typing.Sequence[State]
+# durations (microseconds), positions, velocities
+DurationTrajectory = typing.Tuple[Durations, Trajectory, Trajectory]
+DurationTrajectories = typing.Sequence[DurationTrajectory]
+DurationPoint = typing.Tuple[np.uint, o80.Item3dState]
 
 
 def _list_files(
     dir_path: pathlib.Path, extension: str = "", prefix: str = ""
 ) -> typing.List[pathlib.Path]:
     """
-    returns the list of file in dir_path of
-    the specified extension and/or the specified prefix
+    Returns the list of file in dir_path of
+    the specified extension and/or the specified prefix.
     """
     paths = sorted(
         [
@@ -55,38 +58,30 @@ def _list_files(
     return paths
 
 
-def to_stamped_trajectory(
-    input: StateTrajectory, sampling_rate_seconds: float
-) -> StampedTrajectory:
+def to_stamped_trajectory(input: DurationTrajectory) -> StampedTrajectory:
 
-    size = len(input)
-    stamps = np.array([i * sampling_rate_seconds * 1e6 for i in range(size)], np.uint)
-    positions = np.array([np.array(s.position) for s in input])
+    """
+    Converts a Duration trajectory to a stamped trajectory.
+    """
+
+    durations = input[0]
+    positions = input[1]
+    size = len(durations)
+    stamps = np.zeros(size, np.uint)
+    stamps[1:] = np.cumsum(durations[:-1])
     return stamps, positions
 
 
-def to_state_trajectory(input: StampedTrajectory) -> StateTrajectory:
+def to_duration_trajectory(input: StampedTrajectory) -> DurationTrajectory:
     """
-    Converts a StampedTrajectories to a StateTrajectory, i.e. 
-    to a list of instances encapsulating a 3d position and a 3d velocity.
+    Converts a StampedTrajectories to a DurationTrajectory.
     The velocities are estimated by performing finite differences.
     """
-
-    # computing velocities by finite difference
-    dt = np.diff(input[0]) * 1e-6  # also converting from us to seconds
-    positions1 = input[1][:-1, :]
-    positions2 = input[1][1:, :]
-    dp = positions2 - positions1
-    velocities = np.ndarray(input[1].shape, np.float32)
-    velocities[:-1, :] = (dp.T / dt).T
-    velocities[-1, :] = velocities[-2, :]
-
-    # converting to States and returning
-    def _get_state(pos_vel: npt.NDArray[6]) -> State:
-        return State(pos_vel[:3], pos_vel[3:])
-
-    pos_vels = np.concatenate((input[1], velocities), axis=1)
-    return list(np.apply_along_axis(_get_state, axis=1, arr=pos_vels))
+    dt = np.diff(input[0])
+    dp = np.diff(input[1], axis=0)
+    velocities = (dp.T / (dt * 1e-6)).T
+    positions = input[1][:-1, :]
+    return dt, positions, velocities
 
 
 class RecordedBallTrajectories:
@@ -124,7 +119,7 @@ class RecordedBallTrajectories:
         self._f = h5py.File(path, "r+")
 
     @staticmethod
-    def get_default_path(create:bool=False) -> pathlib.Path:
+    def get_default_path(create: bool = False) -> pathlib.Path:
         """
         Returns the default path to the file hosting all ball trajectories
         (i.e. in ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
@@ -157,13 +152,37 @@ class RecordedBallTrajectories:
         """
         return tuple(self._f.keys())
 
+    def rm_group(self, group: str) -> None:
+        """
+        Remove the group of trajectories from the files
+        if such group exists, raise a KeyError otherwise
+        """
+        if not group in self.get_groups():
+            raise KeyError("No such group: {}".format(group))
+        del self._f[group]
+
+    def overwrite(
+        self, group: str, index: int, stamped_trajectory: StampedTrajectory
+    ) -> None:
+        """
+        Overwrite the trajectory at the given group
+        and index.
+        """
+        g = self._f[group]
+        del g[str(index)]
+        traj_group = g.create_group(str(index))
+        time_stamps = stamped_trajectory[0]
+        positions = stamped_trajectory[1]
+        traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
+        traj_group.create_dataset(self._TRAJECTORY, data=positions)
+
     def get_indexes(self, group: str) -> typing.Tuple[int]:
         """
         Returns all the indexes of the specified group, or
         raise a ValueError if no such group.
         """
         g = self._f[group]
-        return tuple(g.keys())
+        return tuple([int(index) for index in g.keys()])
 
     def get_stamped_trajectory(
         self, group: str, index: int, direct: bool = False
@@ -278,7 +297,7 @@ class RecordedBallTrajectories:
             _save_trajectory(group, index, stamped_trajectory)
 
         return len(stamped_trajectories)
-            
+
     def add_json_trajectories(
         self, group_name: str, json_path: pathlib.Path, sampling_rate_us: int
     ) -> int:
@@ -306,7 +325,9 @@ class RecordedBallTrajectories:
                 content = f.read()
             content = content.strip()
             content = eval(content)
-            trajectory = np.array(content["ob"], np.float32)[:, :3]  # keeping only the position
+            trajectory = np.array(content["ob"], np.float32)[
+                :, :3
+            ]  # keeping only the position
             return trajectory
 
         def _read_folder(json_path: pathlib.Path) -> Trajectories:
@@ -334,7 +355,6 @@ class RecordedBallTrajectories:
             time_stamps = np.array(
                 [i * sampling_rate_us for i in range(trajectory.shape[0])], np.int32
             )
-
             # adding 2 datasets: time_stamps and positions
             traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
             traj_group.create_dataset(self._TRAJECTORY, data=trajectory)
@@ -432,7 +452,7 @@ class BallTrajectories:
         Returns one of the trajectory, randomly selected.
         """
         index = random.choice(list(range(len(self._data.keys()))))
-        return index, self._data[index]
+        return self._data[index]
 
     def get_different_random_trajectories(
         self, nb_trajectories: int
@@ -452,19 +472,38 @@ class BallTrajectories:
         random.shuffle(indexes)
         return [self._data[index] for index in indexes[:nb_trajectories]]
 
+    @staticmethod
+    def to_duration(input: StampedTrajectory) -> DurationTrajectory:
+        """
+        Returns a corresponding duration trajectory
+        """
+        return to_duration_trajectory(input)
+
+    @classmethod
+    def iterate(cls, input: StampedTrajectory) -> typing.Generator[DurationPoint]:
+        """
+        Generator over the trajectory. 
+        Yields tuples (duration in microseconds, state), state having
+        a position and a velocity attribute.
+        """
+        durations, positions, velocities = cls.to_duration(input)
+        for d, p, v in zip(durations, positions, velocities):
+            yield d, o80.Item3dState(p, v)
+        return
+
 
 def velocity_line_trajectory(
     start: typing.Sequence[float],
     end: typing.Sequence[float],
     velocity: float,
     sampling_rate: float = 0.01,
-) -> StateTrajectory:
+) -> DurationTrajectory:
 
     """
     Start and end being n dimentional points, velocity
     a float value (meter per seconds) and the sampling
-    rate between two points (in seconds), returns a list of instance
-    of States corresponding to a point going from
+    rate between two points (in seconds), returns duration
+    trajectory corresponding to a point going from
     start to end at the given velocity
     """
 
@@ -479,7 +518,7 @@ def velocity_line_trajectory(
     duration = distance / velocity
 
     # the velocity vector
-    velnd = [v / duration for v in vector]
+    velnd = np.array([v / duration for v in vector], np.float32)
 
     # discrete number of steps to go from start
     # to end at given speed and sampling rate
@@ -491,13 +530,18 @@ def velocity_line_trajectory(
     # creating the trajectory, translating
     # one displacement vector per step
     point = start
-    states = []
+    positions = []
     for cstep in range(nb_steps):
         point = [p + s for p, s in zip(point, step)]
-        states.append(State(point, velnd))
+        positions.append(np.array(point, np.float32))
+    positions = np.array(positions, np.float32)
+    velocities = np.array([velnd] * len(positions), np.float32)
+
+    # durations in microseconds
+    durations = np.array([int(sampling_rate * 1e6)] * nb_steps)
 
     # returning the trajectory
-    return states
+    return durations, positions, velocities
 
 
 def duration_line_trajectory(
@@ -505,13 +549,13 @@ def duration_line_trajectory(
     end: typing.Sequence[float],
     duration_ms: float,
     sampling_rate: float = 0.01,
-) -> StateTrajectory:
+) -> DurationTrajectory:
 
     """
     Start and end being n dimentional points, duration
     a float value (milliseconds) and the sampling
-    rate between two points (in seconds), returns a list of instance
-    of States corresponding to a point going from
+    rate between two points (in seconds), returns duration
+    trajectory corresponding to a point going from
     start to end over the provided duration
     """
 
@@ -526,7 +570,7 @@ def duration_line_trajectory(
     duration = duration_ms / 1000.0
 
     # the velocity vector
-    velnd = [v / duration for v in vector]
+    velnd = np.array([v / duration for v in vector], np.float32)
 
     # discrete number of steps to go from start
     # to end at given speed and sampling rate
@@ -540,10 +584,15 @@ def duration_line_trajectory(
     # creating the trajectory, translating
     # one displacement vector per step
     point = start
-    states = []
+    positions = []
     for cstep in range(nb_steps):
         point = [p + s for p, s in zip(point, step)]
-        states.append(State(point, velnd))
+        positions.append(np.array(point, float32))
+    positions = np.array(positions, np.float32)
+    velocities = np.array([velnd] * len(positions), np.float32)
+
+    # durations in microseconds
+    durations = np.array([int(sampling_rate * 1e6)] * nb_steps)
 
     # returning the trajectory
-    return states
+    return durations, positions, velocities

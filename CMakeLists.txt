@@ -65,6 +65,15 @@ _ament_cmake_python_get_python_install_dir()
 install(TARGETS ${PROJECT_NAME}_wrp DESTINATION ${PYTHON_INSTALL_DIR})
 
 
+##############
+# Executable #
+##############
+
+install_scripts(
+  ${CMAKE_CURRENT_LIST_DIR}/bin/pam_ball_trajectories.py
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin/
+)
+
 ######################
 # Python Native code #
 ######################

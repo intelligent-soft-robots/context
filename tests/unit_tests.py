@@ -9,7 +9,7 @@ from context import ball_trajectories as bt
 _START_POSITION = (1.0, 2.0, 1.0)
 _END_POSITION = (3.0, 4.0, 1.0)
 _VELOCITY = 0.5
-_SAMPLING_RATE = 0.01
+_SAMPLING_RATE = 10000  # microseconds
 
 # configuration for working_directory fixture
 _NB_JSONS = 3
@@ -22,42 +22,44 @@ _HDF5 = "test.hdf5"
 
 
 @pytest.fixture
-def state_trajectory() -> bt.StateTrajectory:
+def duration_trajectory() -> bt.DurationTrajectory:
     """
     Generate a line trajectory from start to end position
     """
     return bt.velocity_line_trajectory(
-        _START_POSITION, _END_POSITION, _VELOCITY, _SAMPLING_RATE
+        _START_POSITION, _END_POSITION, _VELOCITY, float(_SAMPLING_RATE * 1e-6)
     )
 
 
 @pytest.fixture
-def json_trajectory(state_trajectory: bt.StateTrajectory) -> str:
+def json_trajectory(duration_trajectory: bt.DurationTrajectory) -> str:
     """
-    Convert the state trajectory to a json string representation,
+    Convert the duration trajectory to a json string representation,
     as supported by bt.RecordedBallTrajectories.add_json_trajectories.
     """
-
-    entries = [s.position + s.velocity for s in state_trajectory]
+    positions = duration_trajectory[1]
+    velocities = duration_trajectory[2]
+    entries = np.concatenate((positions, velocities), axis=1)
+    entries = list([list(entries[l, :]) for l in range(entries.shape[0])])
     d = {"ob": entries}
     return repr(d)
 
 
 @pytest.fixture
-def tennicam_trajectory(state_trajectory: bt.StateTrajectory) -> str:
+def tennicam_trajectory(duration_trajectory: bt.DurationTrajectory) -> str:
     """
     create the string representation of a ball trajectory
     in tennicam format.
     """
 
-    size = len(state_trajectory)
+    size = len(duration_trajectory[0])
     ball_ids = [i for i in range(size)]
-    stamped_trajectory = bt.to_stamped_trajectory(state_trajectory, _SAMPLING_RATE)
+    stamped_trajectory = bt.to_stamped_trajectory(duration_trajectory)
     time_stamps = stamped_trajectory[0]
-    positions = [s.position for s in state_trajectory]
-    velocities = [s.velocity for s in state_trajectory]
+    positions = list(duration_trajectory[1])
+    velocities = list(duration_trajectory[2])
     entries = [
-        (ball_id, time_stamp * 1e3, position, velocity)
+        (ball_id, time_stamp * 1e3, list(position), list(velocity))
         for ball_id, time_stamp, position, velocity in zip(
             ball_ids, time_stamps, positions, velocities
         )
@@ -111,25 +113,74 @@ def loaded_hdf5(working_directory) -> pathlib.Path:
     return hdf5_file
 
 
-def test_conversions(state_trajectory) -> None:
+def test_rm_group(loaded_hdf5) -> None:
+    """
+    Test the RecordedBallTrajectories.rm_group
+    method.
+    """
+
+    path = loaded_hdf5
+    with bt.RecordedBallTrajectories(path) as rbt:
+        assert _JSON_GROUP in rbt.get_groups()
+        rbt.rm_group(_JSON_GROUP)
+        assert _JSON_GROUP not in rbt.get_groups()
+
+    with bt.RecordedBallTrajectories(path) as rbt:
+        assert _JSON_GROUP not in rbt.get_groups()
+
+
+def test_overwrite(loaded_hdf5) -> None:
+    """
+    Test the RecordedBallTrajectories.overwrite 
+    method.
+    """
+    stamps = np.array([10] * 5)
+    positions = np.array([np.array([2] * 3)] * 5)
+    path = loaded_hdf5
+
+    with bt.RecordedBallTrajectories(path) as rbt:
+        rbt.overwrite(_JSON_GROUP, 1, (stamps, positions))
+
+    with bt.RecordedBallTrajectories(path) as rbt:
+        stamped_trajectory = rbt.get_stamped_trajectory(_JSON_GROUP, 1)
+        restamps = stamped_trajectory[0]
+        repositions = stamped_trajectory[1]
+        assert np.array_equal(stamps, restamps)
+        for line in range(positions.shape[0]):
+            p1 = positions[line, :]
+            p2 = repositions[line, :]
+            np.testing.assert_almost_equal(p1, p2)
+
+
+def test_conversions(duration_trajectory) -> None:
     """
     Test the conversions from state trajectory to 
     stamped trajectory, and vice-versa
     """
 
-    stamped_trajectory = bt.to_stamped_trajectory(state_trajectory, _SAMPLING_RATE)
+    stamped_trajectory = bt.to_stamped_trajectory(duration_trajectory)
+    reduration_trajectory = bt.to_duration_trajectory(stamped_trajectory)
 
-    restate_trajectory = bt.to_state_trajectory(stamped_trajectory)
+    # durations
+    assert np.array_equal(duration_trajectory[0][:-1], reduration_trajectory[0])
 
-    for s1, s2 in zip(state_trajectory, restate_trajectory):
-        assert s1.position == s2.position
-        assert s1.velocity == pytest.approx(s2.velocity, abs=1e-3)
+    # positions
+    for line in range(duration_trajectory[1][1:, :].shape[0]):
+        p1 = duration_trajectory[1][line, :]
+        p2 = reduration_trajectory[1][line, :]
+        np.testing.assert_almost_equal(p1, p2)
+
+    # velocities
+    for line in range(duration_trajectory[2][1:, :].shape[0]):
+        v1 = duration_trajectory[2][line, :]
+        v2 = reduration_trajectory[2][line, :]
+        np.testing.assert_almost_equal(p1, p2)
 
 
 @pytest.mark.parametrize("formatting", [_JSON_GROUP, _TENNICAM_GROUP])
 def test_add_trajectories(
     working_directory: pathlib.Path,
-    state_trajectory: bt.StateTrajectory,
+    duration_trajectory: bt.DurationTrajectory,
     formatting: str,
 ):
     """
@@ -137,10 +188,15 @@ def test_add_trajectories(
     with trajectories stored in json files or tennicam files.
     """
 
-    stamped_trajectory = bt.to_stamped_trajectory(state_trajectory, _SAMPLING_RATE)
+    stamped_trajectory = bt.to_stamped_trajectory(duration_trajectory)
     ref_time_stamps = stamped_trajectory[0]
     ref_positions = stamped_trajectory[1]
     ref_trajectory_size = len(ref_time_stamps)
+
+    print()
+    print(duration_trajectory[0][:10])
+    print(ref_time_stamps[:10])
+    print()
 
     hdf5_path = working_directory / _HDF5
 
@@ -149,7 +205,7 @@ def test_add_trajectories(
     with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
         if formatting == _JSON_GROUP:
             nb_added = rbt.add_json_trajectories(
-                group_name, working_directory, _SAMPLING_RATE * 1e6
+                group_name, working_directory, _SAMPLING_RATE
             )
             expected_size = _NB_JSONS
         else:
@@ -157,7 +213,7 @@ def test_add_trajectories(
             expected_size = _NB_TENNICAMS
 
     assert nb_added == expected_size
-            
+
     with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
         assert group_name in rbt.get_groups()
         assert len(rbt.get_indexes(group_name)) == expected_size
@@ -172,7 +228,9 @@ def test_add_trajectories(
 
 @pytest.mark.parametrize("formatting", [_JSON_GROUP, _TENNICAM_GROUP])
 def test_ball_trajectories(
-    loaded_hdf5: pathlib.Path, state_trajectory: bt.StateTrajectory, formatting: str
+    loaded_hdf5: pathlib.Path,
+    duration_trajectory: bt.DurationTrajectory,
+    formatting: str,
 ):
     """
     Test the API of BallTrajectories
@@ -198,5 +256,5 @@ def test_ball_trajectories(
     stamped_trajectory = ball_trajectories.get_trajectory(0)
     time_stamps = stamped_trajectory[0]
     positions = stamped_trajectory[1]
-    assert time_stamps.shape == (len(state_trajectory),)
-    assert positions.shape == (len(state_trajectory), 3)
+    assert time_stamps.shape == (len(duration_trajectory[0]),)
+    assert positions.shape == (len(duration_trajectory[0]), 3)
