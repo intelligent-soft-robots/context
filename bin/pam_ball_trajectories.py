@@ -103,7 +103,7 @@ def run():
 
     # 5 commands supported: info, add-json, add-tennicam,
     # rm and translate.
-    subparser = parser.add_subparsers(dest="command")
+    subparser = parser.add_subparsers(dest="command",required=True)
 
     # for displaying info about the hdf5 file
     info = subparser.add_parser(
@@ -124,7 +124,7 @@ def run():
         "--group", type=str, required=True, help="the group of trajectories"
     )
     add_json.add_argument(
-        "--sampling_rate_us",
+        "--sampling-rate-us",
         type=int,
         required=True,
         help="record sampling rate, in microseconds (int)",
@@ -188,13 +188,6 @@ def run():
 
     elif args.command == "translate":
         _translate(hdf5_path, args.group, args.coords)
-
-    else:
-        if args.command is None:
-            parser.print_help()
-            return
-        raise ValueError("unknown command: {}".format(args.command))
-
 
 if __name__ == "__main__":
 

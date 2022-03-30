@@ -68,7 +68,7 @@ def to_stamped_trajectory(input: DurationTrajectory) -> StampedTrajectory:
     positions = input[1]
     size = len(durations)
     stamps = np.zeros(size, np.uint)
-    stamps[1:] = stamps[1:] + np.cumsum(durations[:-1])
+    stamps[1:] = np.cumsum(durations[:-1])
     return stamps, positions
 
 
@@ -447,7 +447,7 @@ class BallTrajectories:
         """
         return self._data[index]
 
-    def random_trajectory(self) -> typing.StampedTrajectory:
+    def random_trajectory(self) -> StampedTrajectory:
         """
         Returns one of the trajectory, randomly selected.
         """
