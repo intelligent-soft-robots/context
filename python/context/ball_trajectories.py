@@ -18,13 +18,13 @@ import tennicam_client
 import context_wrp
 
 # 3: 3d position , Any: nb of points in trajectory
-Trajectory = npt.NDArray[(typing.Any, 3), np.float32]
+Trajectory = npt.NDArray[npt.Shape[typing.Any, 3], np.float32]
 
 # List of time stamps, in microseconds
-TimeStamps = npt.NDArray[(typing.Any,), np.uint]
+TimeStamps = npt.NDArray[npt.Shape[typing.Any,], np.uint]
 
 # List of time durations, in microseconds
-Durations = npt.NDArray[(typing.Any,), np.uint]
+Durations = npt.NDArray[npt.Shape[typing.Any,], np.uint]
 
 # set of trajectories
 Trajectories = typing.Sequence[Trajectory]
