@@ -103,7 +103,7 @@ def run():
 
     # 5 commands supported: info, add-json, add-tennicam,
     # rm and translate.
-    subparser = parser.add_subparsers(dest="command",required=True)
+    subparser = parser.add_subparsers(dest="command", required=True)
 
     # for displaying info about the hdf5 file
     info = subparser.add_parser(
@@ -188,6 +188,7 @@ def run():
 
     elif args.command == "translate":
         _translate(hdf5_path, args.group, args.coords)
+
 
 if __name__ == "__main__":
 

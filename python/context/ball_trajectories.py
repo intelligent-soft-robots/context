@@ -17,14 +17,30 @@ import pam_configuration
 import tennicam_client
 import context_wrp
 
-# 3: 3d position , Any: nb of points in trajectory
-Trajectory = npt.NDArray[(typing.Any, 3), np.float32]
+if int(npt.__version__[0]) >= 2:
 
-# List of time stamps, in microseconds
-TimeStamps = npt.NDArray[(typing.Any,), np.uint]
+    # from nptyping version 2.0.0, nptying.Shape has been introduced
 
-# List of time durations, in microseconds
-Durations = npt.NDArray[(typing.Any,), np.uint]
+    # 3: 3d position , Any: nb of points in trajectory
+    Trajectory = npt.NDArray[npt.Shape[typing.Any, 3], np.float32]
+
+    # List of time stamps, in microseconds
+    TimeStamps = npt.NDArray[npt.Shape[typing.Any,], np.uint]
+
+    # List of time durations, in microseconds
+    Durations = npt.NDArray[npt.Shape[typing.Any,], np.uint]
+
+else:
+
+    # 3: 3d position , Any: nb of points in trajectory
+    Trajectory = npt.NDArray[(typing.Any, 3), np.float32]
+
+    # List of time stamps, in microseconds
+    TimeStamps = npt.NDArray[(typing.Any,), np.uint]
+
+    # List of time durations, in microseconds
+    Durations = npt.NDArray[(typing.Any,), np.uint]
+
 
 # set of trajectories
 Trajectories = typing.Sequence[Trajectory]
