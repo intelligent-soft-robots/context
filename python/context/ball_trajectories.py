@@ -603,7 +603,7 @@ def duration_line_trajectory(
     positions = []
     for cstep in range(nb_steps):
         point = [p + s for p, s in zip(point, step)]
-        positions.append(np.array(point, float32))
+        positions.append(np.array(point, np.float32))
     positions = np.array(positions, np.float32)
     velocities = np.array([velnd] * len(positions), np.float32)
 
