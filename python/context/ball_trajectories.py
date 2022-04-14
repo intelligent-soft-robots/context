@@ -129,10 +129,10 @@ class RecordedBallTrajectories:
     _TIME_STAMPS = "time_stamps"
     _TRAJECTORY = "trajectory"
 
-    def __init__(self, path: pathlib.Path = None):
+    def __init__(self, path: pathlib.Path = None,  file_mode:str="r+"):
         if path is None:
             path = self.get_default_path()
-        self._f = h5py.File(path, "r+")
+        self._f = h5py.File(path, file_mode)
 
     @staticmethod
     def get_default_path(create: bool = False) -> pathlib.Path:
@@ -168,29 +168,6 @@ class RecordedBallTrajectories:
         """
         return tuple(self._f.keys())
 
-    def rm_group(self, group: str) -> None:
-        """
-        Remove the group of trajectories from the files
-        if such group exists, raise a KeyError otherwise
-        """
-        if not group in self.get_groups():
-            raise KeyError("No such group: {}".format(group))
-        del self._f[group]
-
-    def overwrite(
-        self, group: str, index: int, stamped_trajectory: StampedTrajectory
-    ) -> None:
-        """
-        Overwrite the trajectory at the given group
-        and index.
-        """
-        g = self._f[group]
-        del g[str(index)]
-        traj_group = g.create_group(str(index))
-        time_stamps = stamped_trajectory[0]
-        positions = stamped_trajectory[1]
-        traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
-        traj_group.create_dataset(self._TRAJECTORY, data=positions)
 
     def get_indexes(self, group: str) -> typing.Tuple[int]:
         """
@@ -239,6 +216,60 @@ class RecordedBallTrajectories:
             for index in indexes
         }
 
+
+    def close(self):
+        """
+        Close the hdf5 file
+        """
+        if self._f:
+            self._f.close()
+            self._f = None
+
+    def __enter__(self) -> RecordedBallTrajectories:
+        """
+        For the use of this class as a context manager
+        which closes the hdf5.
+        """
+        return self
+
+    def __exit__(self, type, value, traceback):
+        """
+        For the use of this class as a context manager
+        which closes the hdf5.
+        """
+        self._f.close()
+        self._f = None
+
+
+class MutableRecordedBallTrajectories(RecordedBallTrajectories):
+
+    def __init__(self, path:pathlib.Path=None):
+        super().__init__(path,file_mode="r+")
+
+    def rm_group(self, group: str) -> None:
+        """
+        Remove the group of trajectories from the files
+        if such group exists, raise a KeyError otherwise
+        """
+        if not group in self.get_groups():
+            raise KeyError("No such group: {}".format(group))
+        del self._f[group]
+
+    def overwrite(
+        self, group: str, index: int, stamped_trajectory: StampedTrajectory
+    ) -> None:
+        """
+        Overwrite the trajectory at the given group
+        and index.
+        """
+        g = self._f[group]
+        del g[str(index)]
+        traj_group = g.create_group(str(index))
+        time_stamps = stamped_trajectory[0]
+        positions = stamped_trajectory[1]
+        traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
+        traj_group.create_dataset(self._TRAJECTORY, data=positions)
+        
     def add_tennicam_trajectories(
         self, group_name: str, tennicam_path: pathlib.Path
     ) -> None:
@@ -387,30 +418,8 @@ class RecordedBallTrajectories:
 
         return len(trajectories)
 
-    def close(self):
-        """
-        Close the hdf5 file
-        """
-        if self._f:
-            self._f.close()
-            self._f = None
-
-    def __enter__(self) -> RecordedBallTrajectories:
-        """
-        For the use of this class as a context manager
-        which closes the hdf5.
-        """
-        return self
-
-    def __exit__(self, type, value, traceback):
-        """
-        For the use of this class as a context manager
-        which closes the hdf5.
-        """
-        self._f.close()
-        self._f = None
-
-
+        
+        
 class BallTrajectories:
     """
     Convenience wrapper over a hdf5 file which contains 

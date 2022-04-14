@@ -106,7 +106,7 @@ def loaded_hdf5(working_directory) -> pathlib.Path:
 
     hdf5_file = working_directory / _HDF5
 
-    with bt.RecordedBallTrajectories(path=hdf5_file) as rbt:
+    with bt.MutableRecordedBallTrajectories(path=hdf5_file) as rbt:
         rbt.add_json_trajectories(_JSON_GROUP, working_directory, _SAMPLING_RATE * 1e6)
         rbt.add_tennicam_trajectories(_TENNICAM_GROUP, working_directory)
 
@@ -120,25 +120,25 @@ def test_rm_group(loaded_hdf5) -> None:
     """
 
     path = loaded_hdf5
-    with bt.RecordedBallTrajectories(path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path) as rbt:
         assert _JSON_GROUP in rbt.get_groups()
         rbt.rm_group(_JSON_GROUP)
         assert _JSON_GROUP not in rbt.get_groups()
 
-    with bt.RecordedBallTrajectories(path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path) as rbt:
         assert _JSON_GROUP not in rbt.get_groups()
 
 
 def test_overwrite(loaded_hdf5) -> None:
     """
-    Test the RecordedBallTrajectories.overwrite 
+    Test the MutableRecordedBallTrajectories.overwrite 
     method.
     """
     stamps = np.array([10] * 5)
     positions = np.array([np.array([2] * 3)] * 5)
     path = loaded_hdf5
 
-    with bt.RecordedBallTrajectories(path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path) as rbt:
         rbt.overwrite(_JSON_GROUP, 1, (stamps, positions))
 
     with bt.RecordedBallTrajectories(path) as rbt:
@@ -202,7 +202,7 @@ def test_add_trajectories(
 
     group_name = formatting
 
-    with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
         if formatting == _JSON_GROUP:
             nb_added = rbt.add_json_trajectories(
                 group_name, working_directory, _SAMPLING_RATE
