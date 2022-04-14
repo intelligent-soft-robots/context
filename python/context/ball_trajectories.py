@@ -124,12 +124,18 @@ class RecordedBallTrajectories:
       ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
       /opt/mpi-is/pam/context/ball_trajectories.hdf5
       (as installed by the pam_configuration package)
+    file_mode: (optional)
+      mode in which the h5py file will be open. The default
+      is "r" (read only), which is sufficient for all the 
+      method provided by the class. See the subclass
+      MutableRecordedBallTrajectories for methods that will
+      update the file.
     """
 
     _TIME_STAMPS = "time_stamps"
     _TRAJECTORY = "trajectory"
 
-    def __init__(self, path: pathlib.Path = None,  file_mode:str="r+"):
+    def __init__(self, path: pathlib.Path = None, file_mode: str = "r+"):
         if path is None:
             path = self.get_default_path()
         self._f = h5py.File(path, file_mode)
@@ -167,7 +173,6 @@ class RecordedBallTrajectories:
         (i.e. all the sets)
         """
         return tuple(self._f.keys())
-
 
     def get_indexes(self, group: str) -> typing.Tuple[int]:
         """
@@ -216,7 +221,6 @@ class RecordedBallTrajectories:
             for index in indexes
         }
 
-
     def close(self):
         """
         Close the hdf5 file
@@ -242,9 +246,14 @@ class RecordedBallTrajectories:
 
 
 class MutableRecordedBallTrajectories(RecordedBallTrajectories):
+    """
+    Subclass of RecordedBallTrajectories that had some method that
+    will update the content of the HDF5 file. Open the file using the
+    "r+" mode.
+    """
 
-    def __init__(self, path:pathlib.Path=None):
-        super().__init__(path,file_mode="r+")
+    def __init__(self, path: pathlib.Path = None):
+        super().__init__(path, file_mode="r+")
 
     def rm_group(self, group: str) -> None:
         """
@@ -269,7 +278,7 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
         positions = stamped_trajectory[1]
         traj_group.create_dataset(self._TIME_STAMPS, data=time_stamps)
         traj_group.create_dataset(self._TRAJECTORY, data=positions)
-        
+
     def add_tennicam_trajectories(
         self, group_name: str, tennicam_path: pathlib.Path
     ) -> None:
@@ -418,8 +427,7 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
 
         return len(trajectories)
 
-        
-        
+
 class BallTrajectories:
     """
     Convenience wrapper over a hdf5 file which contains 
