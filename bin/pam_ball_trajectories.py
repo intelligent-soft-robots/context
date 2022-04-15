@@ -55,7 +55,7 @@ def _info(hdf5_path: pathlib.Path, group_name: str = None):
 
 def _add_json(hdf5_path: pathlib.Path, group_name: str, sampling: int):
     logging.info("recording trajectories in {}".format(hdf5_path))
-    with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
         if group_name in rbt.get_groups():
             raise ValueError("group {} already present in the file")
         nb_added = rbt.add_json_trajectories(group_name, pathlib.Path.cwd(), sampling)
@@ -64,7 +64,7 @@ def _add_json(hdf5_path: pathlib.Path, group_name: str, sampling: int):
 
 def _add_tennicam(hdf5_path: pathlib.Path, group_name: str):
     logging.info("recording trajectories in {}".format(hdf5_path))
-    with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
         if group_name in rbt.get_groups():
             raise ValueError("group {} already present in the file")
     nb_added = rbt.add_tennicam_trajectories(group_name, pathlib.Path.cwd())
@@ -72,7 +72,7 @@ def _add_tennicam(hdf5_path: pathlib.Path, group_name: str):
 
 
 def _rm_group(hdf5_path: pathlib.Path, group_name: str):
-    with bt.RecordedBallTrajectories(path=hdf5_path) as rbt:
+    with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
         rbt.rm_group(group_name)
 
 
