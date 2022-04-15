@@ -135,7 +135,7 @@ class RecordedBallTrajectories:
     _TIME_STAMPS = "time_stamps"
     _TRAJECTORY = "trajectory"
 
-    def __init__(self, path: pathlib.Path = None, file_mode: str = "r+"):
+    def __init__(self, path: pathlib.Path = None, file_mode: str = "r"):
         if path is None:
             path = self.get_default_path()
         self._f = h5py.File(path, file_mode)
