@@ -4,7 +4,6 @@
 
 namespace context
 {
-
 /**
  * Encapsulates the information about a contact
  * (or the abscence of contact).

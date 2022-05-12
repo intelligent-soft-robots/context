@@ -6,7 +6,7 @@ def _distance(p1, p2):
 
 
 def _norm(p):
-    return math.sqrt(sum([p_ ** 2 for p_ in p]))
+    return math.sqrt(sum([p_**2 for p_ in p]))
 
 
 class BallStatus:

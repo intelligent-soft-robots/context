@@ -25,10 +25,20 @@ if int(npt.__version__[0]) >= 2:
     Trajectory = npt.NDArray[npt.Shape[typing.Any, 3], np.float32]
 
     # List of time stamps, in microseconds
-    TimeStamps = npt.NDArray[npt.Shape[typing.Any,], np.uint]
+    TimeStamps = npt.NDArray[
+        npt.Shape[
+            typing.Any,
+        ],
+        np.uint,
+    ]
 
     # List of time durations, in microseconds
-    Durations = npt.NDArray[npt.Shape[typing.Any,], np.uint]
+    Durations = npt.NDArray[
+        npt.Shape[
+            typing.Any,
+        ],
+        np.uint,
+    ]
 
 else:
 
@@ -126,7 +136,7 @@ class RecordedBallTrajectories:
       (as installed by the pam_configuration package)
     file_mode: (optional)
       mode in which the h5py file will be open. The default
-      is "r" (read only), which is sufficient for all the 
+      is "r" (read only), which is sufficient for all the
       method provided by the class. See the subclass
       MutableRecordedBallTrajectories for methods that will
       update the file.
@@ -151,7 +161,7 @@ class RecordedBallTrajectories:
         Parameters
         ----------
         create: optional
-          create an empty file if the file does not exists at the 
+          create an empty file if the file does not exists at the
           default location. If create is False and the file does
           not exists, a FileNotFoundError is raised.
         """
@@ -188,7 +198,7 @@ class RecordedBallTrajectories:
         """
         Returns a the stamped trajectory, or raise a ValueError
         if no such group, or no such index in the group.
-        If not direct, a tuple of h5py data instances will be 
+        If not direct, a tuple of h5py data instances will be
         returned (can not be accessed once the file is closed). Otherwise
         a tuple of numpy arrays is returned.
         """
@@ -211,7 +221,7 @@ class RecordedBallTrajectories:
         """
         Returns all trajectories of the group, or raise a ValueError
         if no such group.
-        If not direct, a tuple of h5py data instances will be 
+        If not direct, a tuple of h5py data instances will be
         returned (can not be accessed once the file is closed). Otherwise
         a tuple of numpy arrays is returned.
         """
@@ -430,8 +440,8 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
 
 class BallTrajectories:
     """
-    Convenience wrapper over a hdf5 file which contains 
-    sets ("groups") of ball trajectories. 
+    Convenience wrapper over a hdf5 file which contains
+    sets ("groups") of ball trajectories.
 
     The constructor loads a group of trajectories in the memory,
     and methods provide convenience functions to access them.
@@ -444,8 +454,8 @@ class BallTrajectories:
     group:
       name of the group of trajectories to load
     hdf5_path: optional
-      absolute path to the hdf5 file to load. If None, 
-      the default file will be used (i.e. either 
+      absolute path to the hdf5 file to load. If None,
+      the default file will be used (i.e. either
       ~/.mpi-is/pam/context/ball_trajectories.hdf5 or
       /opt/mpi-is/pam/context/ball_trajectories.hdf5
     """
@@ -491,7 +501,7 @@ class BallTrajectories:
         self, nb_trajectories: int
     ) -> StampedTrajectories:
         """
-        Returns a list of trajectories, randomly 
+        Returns a list of trajectories, randomly
         ordered and selected.
         """
         if nb_trajectories > self.size():
@@ -515,7 +525,7 @@ class BallTrajectories:
     @classmethod
     def iterate(cls, input: StampedTrajectory) -> typing.Generator[DurationPoint]:
         """
-        Generator over the trajectory. 
+        Generator over the trajectory.
         Yields tuples (duration in microseconds, state), state having
         a position and a velocity attribute.
         """
@@ -544,7 +554,7 @@ def velocity_line_trajectory(
     vector = [e - s for e, s in zip(end, start)]
 
     # distance between end and start
-    distance = math.sqrt(sum([v ** 2 for v in vector]))
+    distance = math.sqrt(sum([v**2 for v in vector]))
 
     # duration of motion between start and end,
     # at constant velocity
@@ -596,7 +606,7 @@ def duration_line_trajectory(
     vector = [e - s for e, s in zip(end, start)]
 
     # distance between end and start
-    distance = math.sqrt(sum([v ** 2 for v in vector]))
+    distance = math.sqrt(sum([v**2 for v in vector]))
 
     # duration of motion between start and end,
     # at constant velocity
