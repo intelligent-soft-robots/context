@@ -73,7 +73,7 @@ def working_directory(
     tmp_path: pathlib.Path, json_trajectory: str, tennicam_trajectory: str
 ) -> pathlib.Path:
     """
-    Generate some json and tennicam files, as well as an 
+    Generate some json and tennicam files, as well as an
     empty hdf5 file, in a tmp directory
     """
 
@@ -99,7 +99,7 @@ def working_directory(
 @pytest.fixture
 def loaded_hdf5(working_directory) -> pathlib.Path:
     """
-    Add content to the hdf5 file present in the 
+    Add content to the hdf5 file present in the
     working directory, and returns the absolute path
     to this file.
     """
@@ -131,7 +131,7 @@ def test_rm_group(loaded_hdf5) -> None:
 
 def test_overwrite(loaded_hdf5) -> None:
     """
-    Test the MutableRecordedBallTrajectories.overwrite 
+    Test the MutableRecordedBallTrajectories.overwrite
     method.
     """
     stamps = np.array([10] * 5)
@@ -154,7 +154,7 @@ def test_overwrite(loaded_hdf5) -> None:
 
 def test_conversions(duration_trajectory) -> None:
     """
-    Test the conversions from state trajectory to 
+    Test the conversions from state trajectory to
     stamped trajectory, and vice-versa
     """
 
