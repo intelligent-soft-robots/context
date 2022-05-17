@@ -40,7 +40,7 @@ def json_trajectory(duration_trajectory: bt.DurationTrajectory) -> str:
     positions = duration_trajectory[1]
     velocities = duration_trajectory[2]
     entries = np.concatenate((positions, velocities), axis=1)
-    entries = list([list(entries[l, :]) for l in range(entries.shape[0])])
+    entries = list([list(entries[i, :]) for i in range(entries.shape[0])])
     d = {"ob": entries}
     return repr(d)
 
@@ -190,7 +190,6 @@ def test_add_trajectories(
 
     stamped_trajectory = bt.to_stamped_trajectory(duration_trajectory)
     ref_time_stamps = stamped_trajectory[0]
-    ref_positions = stamped_trajectory[1]
     ref_trajectory_size = len(ref_time_stamps)
 
     print()
