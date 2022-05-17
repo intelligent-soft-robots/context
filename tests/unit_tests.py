@@ -174,7 +174,7 @@ def test_conversions(duration_trajectory) -> None:
     for line in range(duration_trajectory[2][1:, :].shape[0]):
         v1 = duration_trajectory[2][line, :]
         v2 = reduration_trajectory[2][line, :]
-        np.testing.assert_almost_equal(p1, p2)
+        np.testing.assert_almost_equal(v1, v2)
 
 
 @pytest.mark.parametrize("formatting", [_JSON_GROUP, _TENNICAM_GROUP])
