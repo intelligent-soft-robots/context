@@ -14,7 +14,6 @@ import logging
 import pathlib
 import typing
 import numpy as np
-import nptyping as npt
 import context.ball_trajectories as bt
 
 
@@ -118,7 +117,9 @@ def run():
     # to a hdf5 trajectory file
     add_json = subparser.add_parser(
         "add-json",
-        help="for saving in a new group all json trajectories present in the current directory",
+        help="""for saving in a new group all json trajectories present in the current
+            directory
+        """,
     )
     add_json.add_argument(
         "--group", type=str, required=True, help="the group of trajectories"
