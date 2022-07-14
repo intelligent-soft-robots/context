@@ -24,22 +24,18 @@ if int(npt.__version__[0]) >= 2:
     # from nptyping version 2.0.0, nptying.Shape has been introduced
 
     # 3: 3d position , Any: nb of points in trajectory
-    Trajectory = npt.NDArray[npt.Shape[typing.Any, 3], np.float32]
+    Trajectory = npt.NDArray[npt.Shape["*, 3"], npt.Float32]
 
     # List of time stamps, in microseconds
     TimeStamps = npt.NDArray[
-        npt.Shape[
-            typing.Any,
-        ],
-        np.uint,
+        npt.Shape["*"],
+        npt.UInt,
     ]
 
     # List of time durations, in microseconds
     Durations = npt.NDArray[
-        npt.Shape[
-            typing.Any,
-        ],
-        np.uint,
+        npt.Shape["*"],
+        npt.UInt,
     ]
 
 else:
