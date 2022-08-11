@@ -5,7 +5,7 @@ It also provides method for generating ball trajectories.
 """
 
 # for typing
-from __future__ import annotations
+#from __future__ import annotations
 import typing
 import nptyping as npt
 
@@ -237,7 +237,7 @@ class RecordedBallTrajectories:
             self._f.close()
             self._f = None
 
-    def __enter__(self) -> RecordedBallTrajectories:
+    def __enter__(self) -> object:
         """
         For the use of this class as a context manager
         which closes the hdf5.
