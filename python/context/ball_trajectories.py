@@ -19,6 +19,8 @@ import o80
 import pam_configuration
 import tennicam_client
 
+from context import LowPassFilter
+
 
 assert int(npt.__version__[0]) >= 2, "Need nptyping >=2."
 
@@ -83,7 +85,7 @@ def to_stamped_trajectory(input: DurationTrajectory) -> StampedTrajectory:
     return stamps, positions
 
 
-def to_duration_trajectory(input: StampedTrajectory) -> DurationTrajectory:
+def to_duration_trajectory(input: StampedTrajectory, vel_filter_window_size: int = 1) -> DurationTrajectory:
     """
     Converts a StampedTrajectories to a DurationTrajectory.
     The velocities are estimated by performing finite differences.
@@ -92,6 +94,12 @@ def to_duration_trajectory(input: StampedTrajectory) -> DurationTrajectory:
     dp = np.diff(input[1], axis=0)
     velocities = (dp.T / (dt * 1e-6)).T
     positions = input[1][:-1, :]
+
+    #velocity filtering
+    window_size = 5
+    filter_lp = [LowPassFilter(vel_filter_window_size), LowPassFilter(vel_filter_window_size), LowPassFilter(vel_filter_window_size)]
+    velocities = [[filter_lp[i].get(v[i]) for i in range(3)] for v in velocities]
+
     return dt, positions, velocities
 
 
@@ -455,7 +463,7 @@ class BallTrajectories:
             self._data: typing.Dict[
                 int, StampedTrajectory
             ] = rbt.get_stamped_trajectories(group, direct=True)
-
+            
     def size(self) -> int:
         """
         Returns the number of trajectories that have been loaded.
@@ -499,22 +507,22 @@ class BallTrajectories:
         return [self._data[index] for index in indexes[:nb_trajectories]]
 
     @staticmethod
-    def to_duration(input: StampedTrajectory) -> DurationTrajectory:
+    def to_duration(input: StampedTrajectory, vel_filter_window_size: int  = 1) -> DurationTrajectory:
         """
         Returns a corresponding duration trajectory
         """
-        return to_duration_trajectory(input)
+        return to_duration_trajectory(input, vel_filter_window_size)
 
     @classmethod
     def iterate(
-        cls, input: StampedTrajectory
+        cls, input: StampedTrajectory, vel_filter_window_size: int = 1
     ) -> typing.Generator[DurationPoint, None, None]:
         """
         Generator over the trajectory.
         Yields tuples (duration in microseconds, state), state having
         a position and a velocity attribute.
         """
-        durations, positions, velocities = cls.to_duration(input)
+        durations, positions, velocities = cls.to_duration(input, vel_filter_window_size)
         for d, p, v in zip(durations, positions, velocities):
             yield d, o80.Item3dState(p, v)
         return
