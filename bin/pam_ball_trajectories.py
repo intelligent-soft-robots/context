@@ -61,6 +61,15 @@ def _add_json(hdf5_path: pathlib.Path, group_name: str, sampling: int):
     logging.info("added {} trajectories".format(nb_added))
 
 
+def _add_ball_robot(hdf5_path: pathlib.Path, group_name: str):
+    logging.info("recording trajectories in {}".format(hdf5_path))
+    with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
+        if group_name in rbt.get_groups():
+            raise ValueError("group {} already present in the file")
+        nb_added = rbt.add_ball_robot_trajectories(group_name, pathlib.Path.cwd())
+    logging.info("added {} trajectories".format(nb_added))
+
+
 def _add_tennicam(hdf5_path: pathlib.Path, group_name: str):
     logging.info("recording trajectories in {}".format(hdf5_path))
     with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
@@ -131,6 +140,18 @@ def run():
         help="record sampling rate, in microseconds (int)",
     )
 
+    # for adding the json files of the current folder
+    # to a hdf5 trajectory file
+    add_ball_robot = subparser.add_parser(
+        "add-robot-ball",
+        help="""for saving in a new group all o80_robot_ball_* trajectories present in the current
+            directory
+        """,
+    )
+    add_ball_robot.add_argument(
+        "--group", type=str, required=True, help="the group of trajectories"
+    )
+
     # for adding the tennicam files of the current folder
     # to a hdf5 trajectory file
     add_tennicam = subparser.add_parser(
@@ -181,6 +202,9 @@ def run():
     elif args.command == "add-json":
         _add_json(hdf5_path, args.group, args.sampling_rate_us)
 
+    elif args.command == "add-robot-ball":
+        _add_ball_robot(hdf5_path, args.group)
+
     elif args.command == "add-tennicam":
         _add_tennicam(hdf5_path, args.group)
 
@@ -195,10 +219,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    # try:
     run()
-    # except Exception as e:
-    #    logging.error("failed with error: {}".format(e))
-    #    sys.exit(1)
 
     sys.exit(0)
