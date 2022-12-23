@@ -10,6 +10,7 @@ import typing
 import nptyping as npt
 
 import random
+import copy
 import math
 import pathlib
 import h5py
@@ -88,6 +89,9 @@ def to_stamped_trajectory(input: DurationTrajectory) -> StampedTrajectory:
     stamps[1:] = np.cumsum(durations[:-1])
     return stamps, positions
 
+
+def _p(l):
+    return " ".join([f"{abs(v):.2f}" for v in l])
 
 def to_duration_trajectory(input: StampedTrajectory) -> DurationTrajectory:
     """
@@ -222,6 +226,17 @@ class RecordedBallTrajectories:
             for index in indexes
         }
 
+    def get_attributes(
+            self, group: str, index: int
+    )->typing.Dict[str,typing.Union[str,int,float]]:
+        """
+        Returns all the attributes attached to the trajectory
+        """
+        r = {}
+        for key,value in self._f[group].attrs.items():
+            r[key]=value
+        return r
+        
     def close(self):
         """
         Close the hdf5 file
@@ -265,6 +280,17 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
             raise KeyError("No such group: {}".format(group))
         del self._f[group]
 
+    def add_attribute(
+            self,
+            group: str, index: int,
+            key: str, value: typing.Union[str,int,float]
+    )->None:
+        """
+        Add an attribute to the trajectory
+        """
+        group: h5py._hl.group.Group = self._f[group]
+        group.attrs[key]=value
+        
     def overwrite(
         self, group: str, index: int, stamped_trajectory: StampedTrajectory
     ) -> None:
@@ -378,6 +404,19 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
                     )
                 return steps[detection_start:]
 
+            def _recompute_ball_velocity(steps: typing.List[Step])->None:
+                for current,following in zip(steps,steps[1:]):
+                    time_diff = (following[0]-current[0])*1e-9
+                    following[1].velocity = [
+                        (fp-cp)/time_diff for cp,fp
+                        in zip(current[1].position,following[1].position)
+                    ]
+
+            def _ball_id_duplicates(steps: typing.List[Step]) -> None:
+                for s1,s2 in zip(steps,steps[1:]):
+                    if s1[1].ball_id == s2[1].ball_id:
+                        s2[1].ball_id = -1
+                    
             def _fix_undetected_ball(steps: typing.List[Step]) -> typing.List[Step]:
                 """
                 For some step, the ball_id is -1, indicating that
@@ -391,12 +430,19 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
                 # removing the corresponding steps
                 steps = _trim(steps)
 
+                # sometimes there is the same ball id for two steps in a row,
+                # i.e. new ball information did not come up yet during recording
+                # setting these ball id to -1
+                _ball_id_duplicates(steps)
+                
                 # if the ball is not detected at the end,
                 # also removing the corresponding steps
                 steps.reverse()
                 steps = _trim(steps)
                 steps.reverse()
 
+                init_steps = copy.deepcopy(steps)
+                
                 # computing missing position (via
                 # linear interpolation)
                 last_detection = 0
@@ -416,7 +462,10 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
                         detecting = True
                     else:
                         detecting = False
-                        
+
+                # after computing the position, fixing the velocity
+                _recompute_ball_velocity(steps)
+
                 return steps
 
             # reading the file
@@ -429,14 +478,18 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
 
             # fixing the steps for which the ball
             # was not detected (ball_id < 0)
+            # (fixing: performing linear interpolation to fill the gaps)
             steps = _fix_undetected_ball(steps)
 
             # casting to stamped trajectory
             start_time = steps[0][0]
             time_stamps = np.array([(step[0] - start_time) * 1e-3 for step in steps])
             positions = np.array(
-                [step[1].position + step[2].position for step in steps]
+                [list(step[1].position) + list(step[2].position) for step in steps]
             )
+
+            to_duration_trajectory((time_stamps, positions))
+                
             return time_stamps, positions
 
         def _read_folder(tennicam_path: pathlib.Path) -> StampedTrajectories:
