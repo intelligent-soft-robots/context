@@ -66,7 +66,7 @@ def _add_tennicam(hdf5_path: pathlib.Path, group_name: str):
     with bt.MutableRecordedBallTrajectories(path=hdf5_path) as rbt:
         if group_name in rbt.get_groups():
             raise ValueError("group {} already present in the file")
-    nb_added = rbt.add_tennicam_trajectories(group_name, pathlib.Path.cwd())
+        nb_added = rbt.add_tennicam_trajectories(group_name, pathlib.Path.cwd())
     logging.info("added {} trajectories".format(nb_added))
 
 
