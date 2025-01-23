@@ -96,8 +96,9 @@ def to_duration_trajectory(input: StampedTrajectory, vel_filter_window_size: int
     positions = input[1][:-1, :]
 
     #velocity filtering
-    filter_lp = [LowPassFilter(vel_filter_window_size), LowPassFilter(vel_filter_window_size), LowPassFilter(vel_filter_window_size)]
-    velocities = [[filter_lp[i].get(v[i]) for i in range(3)] for v in velocities]
+    if vel_filter_window_size > 1:
+        filter_lp = [LowPassFilter(vel_filter_window_size), LowPassFilter(vel_filter_window_size), LowPassFilter(vel_filter_window_size)]
+        velocities = [[filter_lp[i].get(v[i]) for i in range(3)] for v in velocities]
 
     return dt, positions, velocities
 
