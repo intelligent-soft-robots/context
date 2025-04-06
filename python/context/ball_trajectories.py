@@ -19,7 +19,6 @@ import numpy as np
 
 import o80
 import pam_configuration
-import tennicam_client
 
 from context import LowPassFilter
 
@@ -299,6 +298,8 @@ class MutableRecordedBallTrajectories(RecordedBallTrajectories):
         -------
         The number of trajectories added to the file.
         """
+
+        import tennicam_client
 
         def _read_trajectory(tennicam_file: pathlib.Path) -> StampedTrajectory:
             """
