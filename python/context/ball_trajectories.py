@@ -8,6 +8,8 @@ It also provides method for generating ball trajectories.
 from __future__ import annotations
 import typing
 import nptyping as npt
+from typing import Union, Tuple
+
 
 import random
 import math
