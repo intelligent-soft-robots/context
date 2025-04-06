@@ -483,12 +483,15 @@ class BallTrajectories:
         """
         return self._data[index]
 
-    def random_trajectory(self) -> StampedTrajectory:
+    def random_trajectory(self, return_index: bool = False) -> Union[StampedTrajectory, Tuple[StampedTrajectory, int]]:
         """
         Returns one of the trajectory, randomly selected.
+        If return_index is True, also returns the selected index.
         """
         index = random.choice(list(range(len(self._data.keys()))))
-        return self._data[index]
+        trajectory = self._data[index]
+    
+        return (trajectory, index) if return_index else trajectory
 
     def get_different_random_trajectories(
         self, nb_trajectories: int
