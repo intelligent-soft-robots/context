@@ -466,7 +466,7 @@ class BallTrajectories:
             self._data: typing.Dict[
                 int, StampedTrajectory
             ] = rbt.get_stamped_trajectories(group, direct=True)
-            
+
     def size(self) -> int:
         """
         Returns the number of trajectories that have been loaded.
@@ -486,6 +486,35 @@ class BallTrajectories:
         """
         return self._data[index]
 
+    def get_trajectory_with_translation(
+        self, index: int, translation: typing.Sequence[float]
+    ) -> StampedTrajectory:
+        """
+        Returns the trajectory at the requested index, translated
+        by the provided translation vector.
+        """
+        if len(translation) != 3:
+            raise ValueError("Translation must be a 3d vector")
+        trajectory = self._data[index]
+        positions = trajectory[1] + np.array(translation, np.float32)
+        return trajectory[0], positions
+
+    def get_trajectory_with_random_translation(
+        self, index: int, translation_range: typing.Sequence[float]
+    ) -> StampedTrajectory:
+        """
+        Returns the trajectory at the requested index, translated
+        by a random vector in the provided range.
+        The range is expected to be a 3d vector, i.e. [x_min, x_max, y_min, y_max, z_min, z_max].
+        """
+        if len(translation_range) != 6:
+            raise ValueError("Translation range must be a 6d vector")
+        translation = [
+            random.uniform(translation_range[i*2], translation_range[i*2 + 1])
+            for i in range(3)
+        ]
+        return self.get_trajectory_with_translation(index, translation)
+
     def random_trajectory(self, return_index: bool = False) -> Union[StampedTrajectory, Tuple[StampedTrajectory, int]]:
         """
         Returns one of the trajectory, randomly selected.
@@ -493,8 +522,24 @@ class BallTrajectories:
         """
         index = random.choice(list(range(len(self._data.keys()))))
         trajectory = self._data[index]
-    
+
         return (trajectory, index) if return_index else trajectory
+
+    def random_trajectory_with_random_translation(
+        self, translation_range: typing.Sequence[float], return_index: bool = False
+    ) -> Union[StampedTrajectory, Tuple[StampedTrajectory, int]]:
+        """
+        Returns one of the trajectory, randomly selected,
+        translated by a random vector in the provided range.
+        The range is expected to be a 3d vector, i.e. [x_min, x_max, y_min, y_max, z_min, z_max].
+        If return_index is True, also returns the selected index.
+        """
+        index = random.choice(list(range(len(self._data.keys()))))
+        translated_trajectory = self.get_trajectory_with_random_translation(
+            index, translation_range
+        )
+
+        return (translated_trajectory, index) if return_index else translated_trajectory
 
     def get_different_random_trajectories(
         self, nb_trajectories: int
@@ -511,6 +556,27 @@ class BallTrajectories:
         indexes = list(self._data.keys())
         random.shuffle(indexes)
         return [self._data[index] for index in indexes[:nb_trajectories]]
+
+    def get_different_random_trajectories_with_random_translation(
+        self, nb_trajectories: int, translation_range: typing.Sequence[float]
+    ) -> StampedTrajectories:
+        """
+        Returns a list of trajectories, randomly
+        ordered and selected, translated by a random vector
+        in the provided range.
+        The range is expected to be a 3d vector, i.e. [x_min, x_max, y_min, y_max, z_min, z_max].
+        """
+        if nb_trajectories > self.size():
+            raise ValueError(
+                "BallTrajectories: only {} trajectories "
+                "available ({} requested)".format(self.size(), nb_trajectories)
+            )
+        indexes = list(self._data.keys())
+        random.shuffle(indexes)
+        return [
+            self.get_trajectory_with_random_translation(index, translation_range)
+            for index in indexes[:nb_trajectories]
+        ]
 
     @staticmethod
     def to_duration(input: StampedTrajectory, vel_filter_window_size: int  = 1) -> DurationTrajectory:
