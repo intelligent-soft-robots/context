@@ -7,8 +7,6 @@ It also provides method for generating ball trajectories.
 # for typing
 from __future__ import annotations
 import typing
-import nptyping as npt
-
 import random
 import math
 import pathlib
@@ -19,23 +17,11 @@ import o80
 import pam_configuration
 import tennicam_client
 
+Trajectory = np.ndarray[np.float32]
 
-assert int(npt.__version__[0]) >= 2, "Need nptyping >=2."
+TimeStamps = np.ndarray[np.uint]
 
-# 3: 3d position , Any: nb of points in trajectory
-Trajectory = npt.NDArray[npt.Shape["*, 3"], npt.Float32]
-
-# List of time stamps, in microseconds
-TimeStamps = npt.NDArray[
-    npt.Shape["*"],
-    npt.UInt,
-]
-
-# List of time durations, in microseconds
-Durations = npt.NDArray[
-    npt.Shape["*"],
-    npt.UInt,
-]
+Durations = np.ndarray[np.uint]
 
 # set of trajectories
 Trajectories = typing.Sequence[Trajectory]
@@ -70,7 +56,6 @@ def _list_files(
 
 
 def to_stamped_trajectory(input: DurationTrajectory) -> StampedTrajectory:
-
     """
     Converts a Duration trajectory to a stamped trajectory.
     """
@@ -96,7 +81,6 @@ def to_duration_trajectory(input: StampedTrajectory) -> DurationTrajectory:
 
 
 class RecordedBallTrajectories:
-
     """
     Class for parsing an hdf5 file containing sets of
     recorded ball trajectories.
@@ -452,9 +436,9 @@ class BallTrajectories:
         self._path: pathlib.Path = hdf5_path
 
         with RecordedBallTrajectories(hdf5_path) as rbt:
-            self._data: typing.Dict[
-                int, StampedTrajectory
-            ] = rbt.get_stamped_trajectories(group, direct=True)
+            self._data: typing.Dict[int, StampedTrajectory] = (
+                rbt.get_stamped_trajectories(group, direct=True)
+            )
 
     def size(self) -> int:
         """
@@ -526,7 +510,6 @@ def velocity_line_trajectory(
     velocity: float,
     sampling_rate: float = 0.01,
 ) -> DurationTrajectory:
-
     """
     Start and end being n dimentional points, velocity
     a float value (meter per seconds) and the sampling
@@ -578,7 +561,6 @@ def duration_line_trajectory(
     duration_ms: float,
     sampling_rate: float = 0.01,
 ) -> DurationTrajectory:
-
     """
     Start and end being n dimentional points, duration
     a float value (milliseconds) and the sampling
