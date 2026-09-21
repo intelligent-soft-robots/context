@@ -4,7 +4,6 @@ import pytest
 import numpy as np
 from context import ball_trajectories as bt
 
-
 # configuration of the stamped_trajectory fixture
 _START_POSITION = (1.0, 2.0, 1.0)
 _END_POSITION = (3.0, 4.0, 1.0)
